@@ -1,0 +1,30 @@
+.grid-cell {
+    width: min(450px, 15vw); /* Max 450px, but adapts responsively */
+    height: min(450px, 15vw);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+    border: 5px solid;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--border-color);
+    transition: box-shadow 0.2s ease-in-out;
+  }
+  
+  .grid-cell:hover {
+    box-shadow: 0 0 20px var(--border-color);
+  }
+  
+  .orb {
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 12px white;
+  }
+  

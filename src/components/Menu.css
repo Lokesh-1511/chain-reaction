@@ -1,0 +1,81 @@
+/* Dark theme background */
+body {
+    background-color: #121212;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Card container */
+  #card {
+    background: #1e1e1e;
+    width: 550px;
+    height: 90vh;
+    border-radius: 30px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+    padding: 30px;
+    text-align: center;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Title */
+  h1 {
+    font-size: 32px;
+    margin-bottom: 25px;
+    font-weight: bold;
+  }
+  
+  /* Container for label + input + button */
+  .input-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 90%; /* Make it full width */
+    margin: 10px 0;
+  }
+  
+  /* Labels */
+  label {
+    font-size: 30px;
+    margin-right: 10px;
+    white-space: nowrap; /* Prevents labels from breaking */
+  }
+  
+  /* Inputs */
+  input {
+    width: 60px; /* Small width for single-digit input */
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background-color: #333;
+    color: white;
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  /* Buttons */
+  button {
+    background-color: #ff5722;
+    color: white;
+    padding: 8px 15px; /* Smaller buttons */
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 30px;
+    font-weight: bold;
+    transition: 0.3s;
+    margin-left: 10px;
+  }
+  
+  button:hover {
+    background-color: #e64a19;
+  }
+  

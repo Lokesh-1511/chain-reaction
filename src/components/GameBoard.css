@@ -1,0 +1,132 @@
+/* Center everything */
+body {
+    background-color: #121212;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  
+  /* Game container */
+  .game-container {
+    text-align: center;
+  }
+  
+  /* Title */
+  h2 {
+    font-size: 28px;
+    margin-bottom: 15px;
+  }
+  
+  /* Current Player display */
+  p {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+  
+  /* Grid Board */
+  .grid-container {
+    display: grid;
+    gap: 5px;
+    margin: 20px auto;
+    justify-content: center;
+  }
+  
+  /* Grid Cell */
+  .grid-cell {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    background-color: #333;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s ease-in-out;
+  }
+  
+  /* Click effect */
+  .grid-cell:active {
+    transform: scale(0.9);
+  }
+  
+  /* Player colors */
+  .player-1 { background-color: red; }
+  .player-2 { background-color: blue; }
+  .player-3 { background-color: green; }
+  .player-4 { background-color: yellow; }
+  .player-5 { background-color: purple; }
+  .player-6 { background-color: orange; }
+  .player-7 { background-color: pink; }
+  .player-8 { background-color: brown; }
+  
+  /* Winner Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 80%;
+    color: black;
+  }
+  
+  .modal-content h2 {
+    font-size: 26px;
+    margin-bottom: 10px;
+  }
+  
+  .modal-content p {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+  
+  /* Buttons */
+  .button {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    transition: background-color 0.2s ease-in-out;
+    margin: 10px;
+  }
+  
+  .button-replay {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  .button-replay:hover {
+    background-color: #45a049;
+  }
+  
+  .button-exit {
+    background-color: #f44336;
+    color: white;
+  }
+  
+  .button-exit:hover {
+    background-color: #d32f2f;
+  }
+  

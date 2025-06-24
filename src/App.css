@@ -1,0 +1,39 @@
+.App {
+  text-align: center;
+  margin-top: 50px;
+}
+.mrnu
+.game-board {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.grid-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+  background-color: transparent;
+  cursor: pointer;
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+.grid-cell:hover {
+  background-color: rgba(0, 0, 0, 0.1); /* Light hover effect */
+}
+
+.orb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: bold;
+}
