@@ -79,3 +79,22 @@ body {
     background-color: #e64a19;
   }
   
+  .styled-select {
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 20px;
+    margin-left: 10px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: background 0.2s;
+  }
+  .styled-select:focus {
+    background: #444;
+  }
