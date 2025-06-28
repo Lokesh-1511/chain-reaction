@@ -10,6 +10,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   const [showModal, setShowModal] = useState(false);
   const [winner, setWinner] = useState(null);
   const [gameState, setGameState] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!gameId) return;
@@ -58,6 +59,14 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
     window.location.reload();
   };
 
+  const handleCopyGameId = () => {
+    if (gameId) {
+      navigator.clipboard.writeText(gameId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    }
+  };
+
   const modalStyles = {
     overlay: {
       position: 'fixed',
@@ -96,8 +105,23 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
 
   return (
     <div>
-      <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold' }}>
-        Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'}
+      <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        Game ID: {gameId || 'N/A'}
+        <button
+          onClick={handleCopyGameId}
+          style={{
+            padding: "2px 8px",
+            fontSize: "14px",
+            borderRadius: "4px",
+            border: "none",
+            background: "#333",
+            color: "#fff",
+            cursor: "pointer"
+          }}
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+        | Player ID: {playerId || 'N/A'}
       </div>
       <h2>Chain Reaction Game</h2>
       <p>Current Player: {getPlayerName(currentPlayer)}</p>

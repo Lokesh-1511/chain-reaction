@@ -4,57 +4,74 @@ import { createGame, joinGame } from '../services/api';
 import socket from '../services/socket';
 import "./Menu.css";
 
+// Generate a unique alphanumeric Game ID
+function generateGameId() {
+  return Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+
 function Menu() {
   const [page, setPage] = useState("menu");
   const [row, setRow] = useState(0);
   const [col, setCol] = useState(0);
   const [players, setPlayers] = useState(0);
-  const [gameId, setGameId] = useState(null);
+  const [gameId, setGameId] = useState("");
   const [playerId, setPlayerId] = useState(null);
   const [mode, setMode] = useState('single');
   const [joinGameId, setJoinGameId] = useState("");
   const [error, setError] = useState("");
-  const [showGameId, setShowGameId] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // When mode changes, generate a Game ID for multiplayer
+  const handleModeChange = (e) => {
+    const selectedMode = e.target.value;
+    setMode(selectedMode);
+    setPlayerId(null);
+    setError("");
+    if (selectedMode === "multi") {
+      setGameId(generateGameId());
+    } else {
+      setGameId("");
+    }
+  };
+
+  const handleCopyGameId = () => {
+    if (gameId) {
+      navigator.clipboard.writeText(gameId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    }
+  };
 
   const handleExit = () => {
     setPage("menu");
-    setGameId(null);
+    setGameId("");
     setPlayerId(null);
     setJoinGameId("");
     setError("");
-    setShowGameId(false);
   };
 
   const handleStartGame = async () => {
     setError("");
-    console.log('Start Game clicked', { row, col, players, mode });
     if (row >= 2 && col >= 2 && players >= 2 && players <= 8) {
       try {
-        const game = await createGame({ mode, row, col, players });
-        if (!game || !game.id) {
-          setError("Failed to create game. Try again.");
-          return;
+        // Use the pre-generated gameId for multiplayer, let backend assign for single
+        let createdGame;
+        if (mode === "multi") {
+          createdGame = await createGame({ mode, row, col, players });
+          setGameId(createdGame.id);
+        } else {
+          createdGame = await createGame({ mode, row, col, players });
+          setGameId(createdGame.id);
         }
-        setGameId(game.id);
-        const join = await joinGame(game.id);
-        if (!join || !join.playerId) {
-          setError("Failed to join game. Try again.");
-          return;
-        }
+        const join = await joinGame(createdGame.id);
         setPlayerId(join.playerId);
-        setShowGameId(true); // Always show Game ID screen for debug
-        setPage("game"); // Also set page to game for immediate transition
+        setPage("game");
       } catch (e) {
         setError("Server error. Try again.");
       }
     } else {
       setError("Please enter valid values for all fields.");
     }
-  };
-
-  const handleContinueToGame = () => {
-    setShowGameId(false);
-    setPage("game");
   };
 
   const handleJoinGame = async () => {
@@ -112,13 +129,41 @@ function Menu() {
           </div>
           <div className="input-container">
             <label>Mode</label>
-            <select value={mode} onChange={e => setMode(e.target.value)}>
+            <select className="styled-select" value={mode} onChange={handleModeChange}>
               <option value="single">Single Player</option>
               <option value="multi">Multiplayer</option>
             </select>
           </div>
-          <br/>
-          <button onClick={handleStartGame} disabled={row < 2 || col < 2 || players < 2 || players > 8}>Start Game</button>
+          {mode === "multi" && gameId && (
+            <div style={{ margin: "20px 0", color: "#ffeb3b", fontWeight: "bold", fontSize: "22px" }}>
+              Game ID: {gameId}
+              <button
+                onClick={handleCopyGameId}
+                style={{
+                  marginLeft: "10px",
+                  padding: "4px 10px",
+                  fontSize: "16px",
+                  borderRadius: "4px",
+                  border: "none",
+                  background: "#333",
+                  color: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+              <span style={{ fontSize: "14px", color: "#fff", marginLeft: "10px" }}>
+                (Share this with your friend!)
+              </span>
+            </div>
+          )}
+          <br />
+          <button
+            onClick={handleStartGame}
+            disabled={row < 2 || col < 2 || players < 2 || players > 8}
+          >
+            Start Game
+          </button>
           {mode === 'multi' && (
             <div style={{ marginTop: '20px' }}>
               <h3>Join a Multiplayer Game</h3>
@@ -133,12 +178,6 @@ function Menu() {
           )}
           {error && <div style={{ color: 'red', marginTop: '10px' }}>{error}</div>}
         </>
-      ) : showGameId ? (
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <h2>Share this Game ID with your friend:</h2>
-          <div style={{ fontSize: '32px', margin: '20px 0', fontWeight: 'bold' }}>{gameId}</div>
-          <button onClick={handleContinueToGame} style={{ fontSize: '18px', padding: '10px 30px' }}>Continue to Game</button>
-        </div>
       ) : (
         <>
           <GameBoard row={row} col={col} players={players} onExit={handleExit} gameId={gameId} playerId={playerId} mode={mode} />
