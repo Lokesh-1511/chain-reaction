@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GridCell from './GridCell';
 import socket from '../services/socket';
 import { getGameState } from '../services/api';
@@ -11,6 +11,38 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   const [winner, setWinner] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [cellSize, setCellSize] = useState(60);
+  const containerRef = useRef(null);
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const calculateCellSize = () => {
+      if (containerRef.current && headerRef.current) {
+        const containerHeight = containerRef.current.offsetHeight;
+        const headerHeight = headerRef.current.offsetHeight;
+        const availableHeight = containerHeight - headerHeight;
+        const containerWidth = containerRef.current.offsetWidth;
+        const gap = 5;
+        const margin = 40; // 20px top and bottom margin for the grid
+
+        // Calculate cell size based on available container width and height
+        const sizeByWidth = (containerWidth - (col + 1) * gap) / col;
+        const sizeByHeight = (availableHeight - (row + 1) * gap - margin) / row;
+
+        // Use the smaller of the two to ensure it fits both ways, with a max of 60
+        setCellSize(Math.floor(Math.min(sizeByWidth, sizeByHeight, 60)));
+      }
+    };
+
+    // Use a timeout to ensure layout is stable before calculating
+    const timer = setTimeout(calculateCellSize, 0);
+    window.addEventListener('resize', calculateCellSize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateCellSize);
+    };
+  }, [row, col, gameState]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -41,8 +73,13 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   }, [gameId, playerId]);
 
   const handleCellClick = (x, y) => {
-    if (showModal || currentPlayer !== playerId) return;
-    socket.emit('makeMove', { gameId, playerId, move: { x, y } });
+    // In single player mode, any click is valid.
+    // In multiplayer, only the current player can make a move.
+    if (showModal || (mode === 'multi' && currentPlayer !== playerId)) return;
+
+    // In single player mode, we send the currentPlayer's ID with the move.
+    const movePlayerId = mode === 'single' ? currentPlayer : playerId;
+    socket.emit('makeMove', { gameId, playerId: movePlayerId, move: { x, y } });
   };
 
   const getPlayerName = (player) => {
@@ -85,7 +122,8 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
       padding: '20px',
       borderRadius: '10px',
       textAlign: 'center',
-      maxWidth: '80%'
+      maxWidth: '80%',
+      color: '#333'
     },
     button: {
       margin: '10px',
@@ -104,31 +142,33 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   const displayCol = gameState?.col || col;
 
   return (
-    <div>
-      <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        Game ID: {gameId || 'N/A'}
-        <button
-          onClick={handleCopyGameId}
-          style={{
-            padding: "2px 8px",
-            fontSize: "14px",
-            borderRadius: "4px",
-            border: "none",
-            background: "#333",
-            color: "#fff",
-            cursor: "pointer"
-          }}
-        >
-          {copied ? "Copied!" : "Copy"}
-        </button>
-        | Player ID: {playerId || 'N/A'}
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div ref={headerRef}>
+        <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          Game ID: {gameId || 'N/A'}
+          <button
+            onClick={handleCopyGameId}
+            style={{
+              padding: "2px 8px",
+              fontSize: "14px",
+              borderRadius: "4px",
+              border: "none",
+              background: "#333",
+              color: "#fff",
+              cursor: "pointer"
+            }}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          | Player ID: {playerId || 'N/A'}
+        </div>
+        <h2>Chain Reaction Game</h2>
+        <p>Current Player: {getPlayerName(currentPlayer)}</p>
       </div>
-      <h2>Chain Reaction Game</h2>
-      <p>Current Player: {getPlayerName(currentPlayer)}</p>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${displayCol}, 60px)`,
-        gridTemplateRows: `repeat(${displayRow}, 60px)`,
+        gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
+        gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
         gap: '5px',
         margin: '20px auto',
         justifyContent: 'center'
@@ -142,6 +182,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
               orb={cell.value}
               player={cell.player}
               onClick={handleCellClick}
+              size={cellSize}
             />
           ))
         )}
