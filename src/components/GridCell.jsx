@@ -2,14 +2,14 @@ import React from 'react';
 
 const playerColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown'];
 
-const GridCell = ({ orb, player, onClick, x, y }) => {
+const GridCell = ({ orb, player, onClick, x, y, size }) => {
   return (
     <div
       className="grid-cell"
       onClick={() => onClick(x, y)}
       style={{
-        width: '60px',
-        height: '60px',
+        width: `${size}px`,
+        height: `${size}px`,
         borderRadius: '5px',
         cursor: 'pointer',
         display: 'flex',
@@ -22,8 +22,8 @@ const GridCell = ({ orb, player, onClick, x, y }) => {
         <div
           className="orb"
           style={{
-            width: '40px',
-            height: '40px',
+            width: `${size * 0.7}px`,
+            height: `${size * 0.7}px`,
             borderRadius: '50%',
             backgroundColor: playerColors[(player - 1) % 8],
             display: 'flex',
@@ -31,6 +31,7 @@ const GridCell = ({ orb, player, onClick, x, y }) => {
             alignItems: 'center',
             color: 'white',
             fontWeight: 'bold',
+            fontSize: `${size * 0.4}px`,
           }}
         >
           {orb}

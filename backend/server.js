@@ -21,17 +21,17 @@ const games = {};
 let gameIdCounter = 1;
 
 // Helper: Create a new game session
-function createGame({ mode, row = 9, col = 6, players = 2 }) {
-  const id = gameIdCounter++;
-  games[id] = {
-    id,
+function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
+  const gameId = id || gameIdCounter++;
+  games[gameId] = {
+    id: gameId,
     mode, // 'single' or 'multi'
     players: [],
     state: createInitialState(row, col, players),
     currentPlayer: 1,
     status: 'waiting', // 'waiting', 'active', 'finished'
   };
-  return games[id];
+  return games[gameId];
 }
 
 // Log every request
@@ -43,11 +43,14 @@ app.use((req, res, next) => {
 // REST endpoint: Create a new game
 app.post('/api/game', (req, res) => {
   console.log('POST /api/game called', req.body);
-  const { mode, row, col, players } = req.body;
+  const { id, mode, row, col, players } = req.body;
   if (!['single', 'multi'].includes(mode)) {
     return res.status(400).json({ error: 'Invalid mode' });
   }
-  const game = createGame({ mode, row, col, players });
+  if (id && games[id]) {
+    return res.status(400).json({ error: 'Game ID already exists.' });
+  }
+  const game = createGame({ id, mode, row, col, players });
   res.json(game);
 });
 

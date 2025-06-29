@@ -1,10 +1,10 @@
 const API_URL = 'http://localhost:5000/api';
 
-export async function createGame({ mode, row, col, players }) {
+export async function createGame({ mode, row, col, players, gameId }) {
   const res = await fetch(`${API_URL}/game`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, row, col, players })
+    body: JSON.stringify({ mode, row, col, players, id: gameId })
   });
   return res.json();
 }
