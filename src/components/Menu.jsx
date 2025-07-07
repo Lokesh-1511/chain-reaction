@@ -23,6 +23,7 @@ function Menu() {
   const [players, setPlayers] = useState(2);
   const [gameId, setGameId] = useState("");
   const [playerId, setPlayerId] = useState(null);
+  const [isHost, setIsHost] = useState(false);
   const [mode, setMode] = useState('single');
   const [joinGameId, setJoinGameId] = useState("");
   const [error, setError] = useState("");
@@ -60,6 +61,7 @@ function Menu() {
     setPage("menu");
     setGameId("");
     setPlayerId(null);
+    setIsHost(false);
     setJoinGameId("");
     setError("");
   };
@@ -95,6 +97,7 @@ function Menu() {
       setGameId(createdGame.id);
       const join = await joinGame(createdGame.id);
       setPlayerId(join.playerId);
+      setIsHost(join.isHost || false);
       setPage("game");
     } catch (e) {
       setError("Server error. Could not start game.");
@@ -115,6 +118,7 @@ function Menu() {
       }
       setGameId(joinGameId);
       setPlayerId(join.playerId);
+      setIsHost(join.isHost || false);
       setPage("game");
     } catch (e) {
       setError("Failed to join game. Check the ID and try again.");
@@ -199,9 +203,9 @@ function Menu() {
         </>
       ) : (
         <>
-          <GameBoard row={row} col={col} players={players} onExit={handleExit} gameId={gameId} playerId={playerId} mode={mode} />
+          <GameBoard row={row} col={col} players={players} onExit={handleExit} gameId={gameId} playerId={playerId} mode={mode} isHost={isHost} />
           <div style={{ color: 'yellow', marginTop: '10px' }}>
-            Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'}
+            Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'} | {isHost ? 'Host' : 'Player'}
           </div>
         </>
       )}

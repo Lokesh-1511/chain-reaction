@@ -36,6 +36,12 @@ body {
     justify-content: center;
   }
   
+  /* Loading animation for replay waiting */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
   /* Grid Cell */
   .grid-cell {
     width: 60px;
@@ -129,4 +135,3 @@ body {
   .button-exit:hover {
     background-color: #d32f2f;
   }
-  
