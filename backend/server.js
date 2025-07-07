@@ -34,6 +34,8 @@ function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
     replayRequestedBy: null, // Track who requested the replay
     hostPlayerId: null, // Track the host player (first player to join)
     activePlayers: new Set(), // Track currently active players
+    watchers: new Set(), // Track players who are watching after being eliminated
+    eliminatedPlayers: new Set(), // Track eliminated players
   };
   return games[gameId];
 }
@@ -97,8 +99,27 @@ io.on('connection', (socket) => {
   socket.on('makeMove', ({ gameId, playerId, move }) => {
     const game = games[gameId];
     if (!game || game.status !== 'active') return;
-    game.state = applyMove(game.state, move, playerId);
+    
+    const result = applyMove(game.state, move, playerId);
+    game.state = result.state;
+    
+    // Check for eliminated players
+    if (result.eliminatedPlayers.length > 0) {
+      result.eliminatedPlayers.forEach(eliminatedPlayerId => {
+        game.eliminatedPlayers.add(eliminatedPlayerId);
+        game.activePlayers.delete(eliminatedPlayerId);
+        
+        // Notify the eliminated player
+        io.to(`game_${gameId}`).emit('playerEliminated', { 
+          gameId, 
+          eliminatedPlayerId,
+          message: `You have been eliminated!` 
+        });
+      });
+    }
+    
     io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
+    
     if (game.state.status === 'finished') {
       io.to(`game_${gameId}`).emit('gameOver', { winner: game.state.winner });
     }
@@ -270,6 +291,103 @@ io.on('connection', (socket) => {
         waitingFor: activePlayersArray.filter(pid => game.replayRequests[pid] === undefined)
       });
     }
+  });
+
+  socket.on('surrenderGame', ({ gameId, playerId }) => {
+    const game = games[gameId];
+    if (!game || game.status !== 'active') return;
+    
+    // Remove player from active players
+    game.activePlayers.delete(playerId);
+    
+    // If the host surrenders, close the game for all players
+    if (playerId === game.hostPlayerId) {
+      io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+        gameId, 
+        message: 'Game closed: Host has surrendered' 
+      });
+      delete games[gameId];
+      return;
+    }
+    
+    // Get remaining players
+    const activePlayerArray = Array.from(game.activePlayers);
+    
+    // If not enough players remain, handle accordingly
+    if (game.activePlayers.size < 2) {
+      if (game.activePlayers.size === 1) {
+        // One player remains - they win!
+        const winner = activePlayerArray[0];
+        game.state.status = 'finished';
+        game.state.winner = winner;
+        game.status = 'finished';
+        
+        // First notify about the surrender
+        io.to(`game_${gameId}`).emit('playerSurrendered', { 
+          gameId, 
+          playerId, 
+          remainingPlayers: activePlayerArray,
+          message: `Player ${playerId} has surrendered` 
+        });
+        
+        // Then show the game over with winner
+        setTimeout(() => {
+          io.to(`game_${gameId}`).emit('gameOver', { winner });
+        }, 1500); // Small delay to show surrender message first
+      } else {
+        // No players remain - close the game
+        io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+          gameId, 
+          message: 'Game closed: Not enough players to continue' 
+        });
+        delete games[gameId];
+      }
+    } else {
+      // Multiple players remain - continue the game
+      game.state.players = game.activePlayers.size;
+      game.state.activePlayers = activePlayerArray;
+      
+      // If the current player surrendered, advance to next player
+      if (game.state.currentPlayer === playerId) {
+        const currentIndex = activePlayerArray.indexOf(game.state.currentPlayer);
+        const nextIndex = currentIndex >= 0 ? (currentIndex) % activePlayerArray.length : 0;
+        game.state.currentPlayer = activePlayerArray[nextIndex];
+      }
+      
+      // Notify remaining players about the surrender
+      socket.to(`game_${gameId}`).emit('playerSurrendered', { 
+        gameId, 
+        playerId, 
+        remainingPlayers: activePlayerArray,
+        message: `Player ${playerId} has surrendered` 
+      });
+      
+      // Update the game state for remaining players
+      io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
+    }
+  });
+
+  socket.on('continueWatching', ({ gameId, playerId }) => {
+    const game = games[gameId];
+    if (!game || !game.eliminatedPlayers.has(playerId)) return;
+    
+    // Add to watchers
+    game.watchers.add(playerId);
+    
+    // Notify the player they are now watching
+    socket.emit('watchingGame', { gameId, message: 'You are now watching the game' });
+  });
+
+  socket.on('exitAfterElimination', ({ gameId, playerId }) => {
+    const game = games[gameId];
+    if (!game) return;
+    
+    // Remove from eliminated players and watchers
+    game.eliminatedPlayers.delete(playerId);
+    game.watchers.delete(playerId);
+    
+    // Leave the game room
+    socket.leave(`game_${gameId}`);
   });
 });
 

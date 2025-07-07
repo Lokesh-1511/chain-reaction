@@ -22,6 +22,13 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   const [showGameClosed, setShowGameClosed] = useState(false);
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
+  const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'info' });
+  const [gameEndReason, setGameEndReason] = useState(''); // Track how the game ended
+  const [isEliminated, setIsEliminated] = useState(false);
+  const [isWatching, setIsWatching] = useState(false);
+  const [showEliminationModal, setShowEliminationModal] = useState(false);
+  const [eliminationModalMessage, setEliminationModalMessage] = useState('');
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -75,6 +82,12 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     socket.on('gameOver', ({ winner }) => {
       setWinner(winner);
       setShowModal(true);
+      // Check if this was due to surrender by checking if we recently got a surrender notification
+      if (notification.show && notification.message.includes('surrendered')) {
+        setGameEndReason('surrender');
+      } else {
+        setGameEndReason('normal');
+      }
     });
 
     // Listen for replay-related events
@@ -105,6 +118,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setHasResponded(false);
       setWaitingForPlayers([]);
       setShowReplayWaiting(false);
+      setGameEndReason('');
     });
 
     socket.on('replayCancelled', () => {
@@ -114,6 +128,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setHasResponded(false);
       setWaitingForPlayers([]);
       setShowReplayWaiting(false);
+      setGameEndReason('');
     });
 
     socket.on('gameClosedByHost', ({ message }) => {
@@ -126,9 +141,35 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
     socket.on('playerLeft', ({ playerId: leftPlayerId, remainingPlayers, message }) => {
       setRemainingPlayers(remainingPlayers);
-      // Show a brief notification that a player left
-      console.log(message);
-      // You could add a toast notification here
+      showNotification(message, 'warning');
+    });
+
+    socket.on('playerSurrendered', ({ playerId: surrenderedPlayerId, remainingPlayers, message }) => {
+      setRemainingPlayers(remainingPlayers);
+      showNotification(message, 'info');
+      // If only one player remains, prepare for game over
+      if (remainingPlayers.length === 1) {
+        setGameEndReason('surrender');
+      }
+    });
+
+    socket.on('playerEliminated', ({ eliminatedPlayerId, message }) => {
+      if (eliminatedPlayerId === playerId) {
+        // This player was eliminated
+        setIsEliminated(true);
+        setShowEliminationModal(true);
+        setEliminationModalMessage('');
+        showNotification(message, 'error');
+      } else {
+        // Another player was eliminated
+        showNotification(`Player ${eliminatedPlayerId} was eliminated`, 'warning');
+      }
+    });
+
+    socket.on('watchingGame', ({ message }) => {
+      setIsWatching(true);
+      showNotification(message, 'info');
+      // The modal closing is now handled in handleContinueWatching
     });
 
     return () => {
@@ -140,13 +181,17 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       socket.off('replayCancelled');
       socket.off('gameClosedByHost');
       socket.off('playerLeft');
+      socket.off('playerSurrendered');
+      socket.off('playerEliminated');
+      socket.off('watchingGame');
     };
   }, [gameId, playerId]);
 
   const handleCellClick = (x, y) => {
     // In single player mode, any click is valid.
     // In multiplayer, only the current player can make a move.
-    if (showModal || (mode === 'multi' && currentPlayer !== playerId)) return;
+    // Eliminated players and watchers cannot make moves.
+    if (showModal || isEliminated || isWatching || (mode === 'multi' && currentPlayer !== playerId)) return;
 
     // In single player mode, we send the currentPlayer's ID with the move.
     const movePlayerId = mode === 'single' ? currentPlayer : playerId;
@@ -199,6 +244,49 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       socket.emit('exitGame', { gameId, playerId });
     }
     onExit();
+  };
+
+  const handleSurrender = () => {
+    if (mode === 'multi' && gameId && playerId) {
+      socket.emit('surrenderGame', { gameId, playerId });
+      setShowSurrenderConfirm(false);
+      showNotification('You have surrendered the game', 'warning');
+      // Don't immediately exit - let the game over sequence play out naturally
+    } else {
+      // In single player mode, just exit
+      onExit();
+    }
+  };
+
+  const handleSurrenderConfirm = () => {
+    setShowSurrenderConfirm(true);
+  };
+
+  const handleSurrenderCancel = () => {
+    setShowSurrenderConfirm(false);
+  };
+
+  const handleContinueWatching = () => {
+    socket.emit('continueWatching', { gameId, playerId });
+    setEliminationModalMessage('You are now watching the game...');
+    
+    // Close the modal after 2 seconds
+    setTimeout(() => {
+      setShowEliminationModal(false);
+      setEliminationModalMessage('');
+    }, 2000);
+  };
+
+  const handleExitAfterElimination = () => {
+    socket.emit('exitAfterElimination', { gameId, playerId });
+    onExit();
+  };
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: '', type: 'info' });
+    }, 4000);
   };
 
   const modalStyles = {
@@ -260,7 +348,41 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
           | Player ID: {playerId || 'N/A'}
         </div>
         <h2>Chain Reaction Game</h2>
-        <p>Current Player: {getPlayerName(currentPlayer)}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div>
+            <p style={{ margin: 0 }}>
+              Current Player: {getPlayerName(currentPlayer)}
+              {isEliminated && (
+                <span style={{ color: '#ff4444', marginLeft: '10px', fontSize: '12px' }}>
+                  (You are eliminated)
+                </span>
+              )}
+              {isWatching && (
+                <span style={{ color: '#ffeb3b', marginLeft: '10px', fontSize: '12px' }}>
+                  (Watching)
+                </span>
+              )}
+            </p>
+            {mode === 'multi' && remainingPlayers.length > 0 && (
+              <p style={{ margin: 0, fontSize: '12px', color: '#ccc' }}>
+                Active Players: {remainingPlayers.length}
+              </p>
+            )}
+          </div>
+          {mode === 'multi' && !showModal && !isEliminated && !isWatching && (
+            <div style={{ textAlign: 'right' }}>
+              <button
+                onClick={handleSurrenderConfirm}
+                className="surrender-button"
+              >
+                Surrender
+              </button>
+              <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                Press ESC
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <div style={{
         display: 'grid',
@@ -268,7 +390,9 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
         gap: '5px',
         margin: '20px auto',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        opacity: isEliminated || isWatching ? 0.7 : 1,
+        pointerEvents: isEliminated || isWatching ? 'none' : 'auto'
       }}>
         {cells && cells.map((rowArr, i) =>
           rowArr.map((cell, j) => (
@@ -289,10 +413,17 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
           <div style={modalStyles.modal}>
             <h2>Game Over!</h2>
             <p>{getPlayerName(winner)} wins!</p>
+            {gameEndReason === 'surrender' && (
+              <p style={{ fontSize: '14px', color: '#666', fontStyle: 'italic' }}>
+                Victory by opponent surrender
+              </p>
+            )}
             <button onClick={handleReplay} style={modalStyles.button}>
               {mode === 'single' ? 'Replay' : 'Request Replay'}
             </button>
-            <button onClick={handleExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>Exit to Menu</button>
+            <button onClick={handleExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>
+              {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
+            </button>
           </div>
         </div>
       )}
@@ -338,6 +469,27 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         </div>
       ) : null}
 
+      {/* Notification Toast */}
+      {notification.show && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: notification.type === 'warning' ? '#ff9800' : notification.type === 'error' ? '#f44336' : '#2196f3',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+          zIndex: 1001,
+          fontSize: '14px',
+          fontWeight: 'bold',
+          maxWidth: '300px',
+          wordWrap: 'break-word'
+        }}>
+          {notification.message}
+        </div>
+      )}
+      
       {showGameClosed && (
         <div style={modalStyles.overlay}>
           <div style={modalStyles.modal}>
@@ -346,6 +498,66 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             <button onClick={onExit} style={modalStyles.button}>
               Back to Menu
             </button>
+          </div>
+        </div>
+      )}
+
+      {showSurrenderConfirm && (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h2>Surrender Game</h2>
+            <p>Are you sure you want to surrender?</p>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+              {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
+            </p>
+            <button 
+              onClick={handleSurrender} 
+              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+            >
+              Yes, Surrender
+            </button>
+            <button 
+              onClick={handleSurrenderCancel} 
+              style={{ ...modalStyles.button, backgroundColor: '#666' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEliminationModal && (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            {eliminationModalMessage ? (
+              <>
+                <h2 style={{ color: '#2196f3' }}>Spectating</h2>
+                <p>{eliminationModalMessage}</p>
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 style={{ color: '#f44336' }}>You Lost!</h2>
+                <p>You have been eliminated from the game.</p>
+                <p style={{ fontSize: '14px', color: '#666' }}>
+                  Would you like to continue watching the game or exit?
+                </p>
+                <button 
+                  onClick={handleContinueWatching} 
+                  style={{ ...modalStyles.button, backgroundColor: '#2196f3' }}
+                >
+                  Continue Watching
+                </button>
+                <button 
+                  onClick={handleExitAfterElimination} 
+                  style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+                >
+                  Exit to Menu
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

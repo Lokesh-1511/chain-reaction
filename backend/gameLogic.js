@@ -101,15 +101,24 @@ function checkPlayerElimination(state) {
       }
     });
   });
-  return state.activePlayers.filter(
+  
+  const newActivePlayers = state.activePlayers.filter(
     p => playersWithOrbs.has(p) || !state.playersMoved || !state.playersMoved.includes(p)
   );
+  
+  // Find eliminated players
+  const eliminatedPlayers = state.activePlayers.filter(p => !newActivePlayers.includes(p));
+  
+  return {
+    activePlayers: newActivePlayers,
+    eliminatedPlayers: eliminatedPlayers
+  };
 }
 
 function checkWin(state) {
-  const updatedActivePlayers = checkPlayerElimination(state);
-  if (updatedActivePlayers.length === 1) {
-    state.winner = updatedActivePlayers[0];
+  const eliminationResult = checkPlayerElimination(state);
+  if (eliminationResult.activePlayers.length === 1) {
+    state.winner = eliminationResult.activePlayers[0];
     state.status = 'finished';
     return state.winner;
   }
@@ -117,23 +126,29 @@ function checkWin(state) {
 }
 
 function applyMove(state, move, playerId) {
-  if (state.status !== 'active') return state;
-  if (state.currentPlayer !== playerId) return state;
+  if (state.status !== 'active') return { state, eliminatedPlayers: [] };
+  if (state.currentPlayer !== playerId) return { state, eliminatedPlayers: [] };
+  
   processMoveWithExplosions(state, playerId, move.x, move.y);
   if (!state.playersMoved.includes(playerId)) {
     state.playersMoved.push(playerId);
   }
-  // Advance to next player
-  const updatedPlayers = checkPlayerElimination(state);
-  state.activePlayers = updatedPlayers;
-  if (updatedPlayers.length === 1) {
-    state.winner = updatedPlayers[0];
+  
+  // Check for eliminated players
+  const eliminationResult = checkPlayerElimination(state);
+  const eliminatedPlayers = eliminationResult.eliminatedPlayers;
+  
+  state.activePlayers = eliminationResult.activePlayers;
+  
+  if (eliminationResult.activePlayers.length === 1) {
+    state.winner = eliminationResult.activePlayers[0];
     state.status = 'finished';
   } else {
-    const idx = updatedPlayers.indexOf(playerId);
-    state.currentPlayer = updatedPlayers[(idx + 1) % updatedPlayers.length];
+    const idx = eliminationResult.activePlayers.indexOf(playerId);
+    state.currentPlayer = eliminationResult.activePlayers[(idx + 1) % eliminationResult.activePlayers.length];
   }
-  return state;
+  
+  return { state, eliminatedPlayers };
 }
 
 module.exports = {

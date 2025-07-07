@@ -42,6 +42,27 @@ body {
     100% { transform: rotate(360deg); }
   }
   
+  /* Surrender button hover effect */
+  .surrender-button {
+    padding: 8px 16px;
+    font-size: 14px;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+  }
+  
+  .surrender-button:hover {
+    background-color: #cc0000;
+  }
+  
+  .surrender-button:active {
+    background-color: #990000;
+  }
+  
   /* Grid Cell */
   .grid-cell {
     width: 60px;
