@@ -101,58 +101,62 @@ function checkPlayerElimination(state) {
       }
     });
   });
-  
-  const newActivePlayers = state.activePlayers.filter(
+  return state.activePlayers.filter(
     p => playersWithOrbs.has(p) || !state.playersMoved || !state.playersMoved.includes(p)
   );
-  
-  // Find eliminated players
-  const eliminatedPlayers = state.activePlayers.filter(p => !newActivePlayers.includes(p));
-  
-  return {
-    activePlayers: newActivePlayers,
-    eliminatedPlayers: eliminatedPlayers
-  };
 }
 
 function checkWin(state) {
-  const eliminationResult = checkPlayerElimination(state);
-  if (eliminationResult.activePlayers.length === 1) {
-    state.winner = eliminationResult.activePlayers[0];
+  const updatedActivePlayers = checkPlayerElimination(state);
+  if (updatedActivePlayers.length === 1) {
+    state.winner = updatedActivePlayers[0];
     state.status = 'finished';
     return state.winner;
   }
   return null;
 }
 
+function isValidMove(state, player, x, y) {
+  // Check if coordinates are within bounds
+  if (x < 0 || x >= state.row || y < 0 || y >= state.col) {
+    return false;
+  }
+  
+  const cell = state.grid[x][y];
+  
+  // Valid moves: empty cell OR cell already belongs to the player
+  return cell.value === 0 || cell.player === player;
+}
+
 function applyMove(state, move, playerId) {
-  if (state.status !== 'active') return { state, eliminatedPlayers: [] };
-  if (state.currentPlayer !== playerId) return { state, eliminatedPlayers: [] };
+  if (state.status !== 'active') return state;
+  if (state.currentPlayer !== playerId) return state;
+  
+  // Validate the move before applying it
+  if (!isValidMove(state, playerId, move.x, move.y)) {
+    return state; // Invalid move, return state unchanged
+  }
   
   processMoveWithExplosions(state, playerId, move.x, move.y);
   if (!state.playersMoved.includes(playerId)) {
     state.playersMoved.push(playerId);
   }
-  
-  // Check for eliminated players
-  const eliminationResult = checkPlayerElimination(state);
-  const eliminatedPlayers = eliminationResult.eliminatedPlayers;
-  
-  state.activePlayers = eliminationResult.activePlayers;
-  
-  if (eliminationResult.activePlayers.length === 1) {
-    state.winner = eliminationResult.activePlayers[0];
+  // Advance to next player
+  const updatedPlayers = checkPlayerElimination(state);
+  state.activePlayers = updatedPlayers;
+  if (updatedPlayers.length === 1) {
+    state.winner = updatedPlayers[0];
     state.status = 'finished';
   } else {
-    const idx = eliminationResult.activePlayers.indexOf(playerId);
-    state.currentPlayer = eliminationResult.activePlayers[(idx + 1) % eliminationResult.activePlayers.length];
+    const idx = updatedPlayers.indexOf(playerId);
+    state.currentPlayer = updatedPlayers[(idx + 1) % updatedPlayers.length];
   }
-  
-  return { state, eliminatedPlayers };
+  return state;
 }
 
 module.exports = {
   createInitialState,
   applyMove,
   checkWin,
+  isValidMove,
 };
