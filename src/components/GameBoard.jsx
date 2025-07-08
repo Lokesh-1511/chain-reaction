@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import GridCell from './GridCell';
 import socket from '../services/socket';
 import { getGameState } from '../services/api';
+import './GameBoard.css';
 
-const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
+const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }) => {
   const [cells, setCells] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [activePlayers, setActivePlayers] = useState([]);
@@ -12,6 +13,16 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   const [gameState, setGameState] = useState(null);
   const [copied, setCopied] = useState(false);
   const [cellSize, setCellSize] = useState(60);
+  const [replayRequested, setReplayRequested] = useState(false);
+  const [replayRequestedBy, setReplayRequestedBy] = useState(null);
+  const [replayMessage, setReplayMessage] = useState('');
+  const [waitingForPlayers, setWaitingForPlayers] = useState([]);
+  const [hasResponded, setHasResponded] = useState(false);
+  const [showReplayWaiting, setShowReplayWaiting] = useState(false);
+  const [showGameClosed, setShowGameClosed] = useState(false);
+  const [gameClosedMessage, setGameClosedMessage] = useState('');
+  const [remainingPlayers, setRemainingPlayers] = useState([]);
+  const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -66,9 +77,78 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
       setWinner(winner);
       setShowModal(true);
     });
+
+    // Listen for replay-related events
+    socket.on('replayRequested', ({ requestedBy, message }) => {
+      if (requestedBy !== playerId) {
+        setReplayRequested(true);
+        setReplayRequestedBy(requestedBy);
+        setReplayMessage(message);
+        setHasResponded(false);
+      }
+    });
+
+    socket.on('replayResponse', ({ playerId: respondedPlayerId, response, waitingFor }) => {
+      setWaitingForPlayers(waitingFor);
+      // Could add more UI feedback here about who responded
+    });
+
+    socket.on('gameRestarted', ({ state }) => {
+      setGameState(state);
+      setCells(state.grid);
+      setCurrentPlayer(state.currentPlayer);
+      setActivePlayers(state.activePlayers);
+      setShowModal(false);
+      setWinner(null);
+      setReplayRequested(false);
+      setReplayRequestedBy(null);
+      setReplayMessage('');
+      setHasResponded(false);
+      setWaitingForPlayers([]);
+      setShowReplayWaiting(false);
+    });
+
+    socket.on('replayCancelled', () => {
+      setReplayRequested(false);
+      setReplayRequestedBy(null);
+      setReplayMessage('');
+      setHasResponded(false);
+      setWaitingForPlayers([]);
+      setShowReplayWaiting(false);
+    });
+
+    socket.on('gameClosedByHost', ({ message }) => {
+      setShowGameClosed(true);
+      setGameClosedMessage(message);
+      setShowModal(false);
+      setReplayRequested(false);
+      setShowReplayWaiting(false);
+    });
+
+    socket.on('playerLeft', ({ playerId: leftPlayerId, remainingPlayers, message }) => {
+      setRemainingPlayers(remainingPlayers);
+      // Show a brief notification that a player left
+      console.log(message);
+      // You could add a toast notification here
+    });
+
+    socket.on('playerSurrendered', ({ playerId: surrenderedPlayerId, remainingPlayers, message }) => {
+      setRemainingPlayers(remainingPlayers);
+      // Show a brief notification that a player surrendered
+      console.log(message);
+      // You could add a toast notification here
+    });
+
     return () => {
       socket.off('gameUpdate');
       socket.off('gameOver');
+      socket.off('replayRequested');
+      socket.off('replayResponse');
+      socket.off('gameRestarted');
+      socket.off('replayCancelled');
+      socket.off('gameClosedByHost');
+      socket.off('playerLeft');
+      socket.off('playerSurrendered');
     };
   }, [gameId, playerId]);
 
@@ -93,7 +173,25 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
   };
 
   const handleReplay = () => {
-    window.location.reload();
+    if (mode === 'single') {
+      window.location.reload();
+    } else {
+      // In multiplayer, request replay from all players
+      socket.emit('requestReplay', { gameId, playerId });
+      setShowModal(false); // Close the game over modal
+      setShowReplayWaiting(true); // Show waiting for others modal
+    }
+  };
+
+  const handleReplayResponse = (response) => {
+    socket.emit('respondToReplay', { gameId, playerId, response });
+    setHasResponded(true);
+    if (!response) {
+      setReplayRequested(false);
+      setReplayRequestedBy(null);
+      setReplayMessage('');
+      setShowReplayWaiting(false);
+    }
   };
 
   const handleCopyGameId = () => {
@@ -102,6 +200,31 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     }
+  };
+
+  const handleExit = () => {
+    if (mode === 'multi' && gameId && playerId) {
+      // Notify server about player exit
+      socket.emit('exitGame', { gameId, playerId });
+    }
+    onExit();
+  };
+
+  const handleSurrender = () => {
+    if (mode === 'multi' && gameId && playerId) {
+      socket.emit('surrenderGame', { gameId, playerId });
+    } else {
+      // In single player mode, just exit
+      onExit();
+    }
+  };
+
+  const handleSurrenderConfirm = () => {
+    setShowSurrenderConfirm(true);
+  };
+
+  const handleSurrenderCancel = () => {
+    setShowSurrenderConfirm(false);
   };
 
   const modalStyles = {
@@ -163,7 +286,17 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
           | Player ID: {playerId || 'N/A'}
         </div>
         <h2>Chain Reaction Game</h2>
-        <p>Current Player: {getPlayerName(currentPlayer)}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <p style={{ margin: 0 }}>Current Player: {getPlayerName(currentPlayer)}</p>
+          {mode === 'multi' && !showModal && (
+            <button
+              onClick={handleSurrenderConfirm}
+              className="surrender-button"
+            >
+              Surrender
+            </button>
+          )}
+        </div>
       </div>
       <div style={{
         display: 'grid',
@@ -192,8 +325,89 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode }) => {
           <div style={modalStyles.modal}>
             <h2>Game Over!</h2>
             <p>{getPlayerName(winner)} wins!</p>
-            <button onClick={handleReplay} style={modalStyles.button}>Replay</button>
-            <button onClick={onExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>Exit to Menu</button>
+            <button onClick={handleReplay} style={modalStyles.button}>
+              {mode === 'single' ? 'Replay' : 'Request Replay'}
+            </button>
+            <button onClick={handleExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>
+              {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {replayRequested && !hasResponded && (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h2>Replay Request</h2>
+            <p>{replayMessage}</p>
+            <p>Do you want to play again?</p>
+            <button 
+              onClick={() => handleReplayResponse(true)} 
+              style={{ ...modalStyles.button, backgroundColor: '#4CAF50' }}
+            >
+              Yes, Play Again
+            </button>
+            <button 
+              onClick={() => handleReplayResponse(false)} 
+              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+            >
+              No, I'll Leave
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {(replayRequested && hasResponded) || showReplayWaiting ? (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h2>Waiting for Other Players</h2>
+            <p>
+              {showReplayWaiting 
+                ? "Waiting for all players to respond to your replay request..." 
+                : "Waiting for all players to respond to the replay request..."}
+            </p>
+            {waitingForPlayers.length > 0 && (
+              <p>Still waiting for: {waitingForPlayers.join(', ')}</p>
+            )}
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showGameClosed && (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h2>Game Closed</h2>
+            <p>{gameClosedMessage}</p>
+            <button onClick={onExit} style={modalStyles.button}>
+              Back to Menu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSurrenderConfirm && (
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h2>Surrender Game</h2>
+            <p>Are you sure you want to surrender?</p>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+              {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
+            </p>
+            <button 
+              onClick={handleSurrender} 
+              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+            >
+              Yes, Surrender
+            </button>
+            <button 
+              onClick={handleSurrenderCancel} 
+              style={{ ...modalStyles.button, backgroundColor: '#666' }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
