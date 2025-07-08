@@ -116,27 +116,9 @@ function checkWin(state) {
   return null;
 }
 
-function isValidMove(state, player, x, y) {
-  // Check if coordinates are within bounds
-  if (x < 0 || x >= state.row || y < 0 || y >= state.col) {
-    return false;
-  }
-  
-  const cell = state.grid[x][y];
-  
-  // Valid moves: empty cell OR cell already belongs to the player
-  return cell.value === 0 || cell.player === player;
-}
-
 function applyMove(state, move, playerId) {
   if (state.status !== 'active') return state;
   if (state.currentPlayer !== playerId) return state;
-  
-  // Validate the move before applying it
-  if (!isValidMove(state, playerId, move.x, move.y)) {
-    return state; // Invalid move, return state unchanged
-  }
-  
   processMoveWithExplosions(state, playerId, move.x, move.y);
   if (!state.playersMoved.includes(playerId)) {
     state.playersMoved.push(playerId);
@@ -158,5 +140,4 @@ module.exports = {
   createInitialState,
   applyMove,
   checkWin,
-  isValidMove,
 };
