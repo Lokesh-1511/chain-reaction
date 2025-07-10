@@ -1,39 +1,48 @@
 /* Center everything */
 body {
     background-color: #121212;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
     margin: 0;
     font-family: Arial, sans-serif;
     color: white;
+    overflow: auto;
   }
   
   /* Game container */
   .game-container {
     text-align: center;
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    box-sizing: border-box;
   }
   
   /* Title */
   h2 {
-    font-size: 28px;
-    margin-bottom: 15px;
+    font-size: clamp(16px, 4vw, 28px);
+    margin: 10px 0;
+    flex-shrink: 0;
   }
   
   /* Current Player display */
   p {
-    font-size: 20px;
+    font-size: clamp(14px, 3vw, 20px);
     font-weight: bold;
-    margin-bottom: 20px;
+    margin: 5px 0;
+    flex-shrink: 0;
   }
   
   /* Grid Board */
   .grid-container {
     display: grid;
     gap: 5px;
-    margin: 20px auto;
+    margin: 10px auto;
     justify-content: center;
+    flex: 1;
+    align-items: center;
+    overflow: visible;
+    max-width: 100%;
   }
   
   /* Loading animation for replay waiting */
@@ -156,3 +165,60 @@ body {
   .button-exit:hover {
     background-color: #d32f2f;
   }
+  
+  /* Mobile specific optimizations */
+@media (max-width: 768px) {
+  .game-container {
+    padding: 2px;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  h2 {
+    font-size: clamp(14px, 3vw, 20px);
+    margin: 2px 0;
+  }
+  
+  p {
+    font-size: clamp(10px, 2.5vw, 16px);
+    margin: 1px 0;
+  }
+  
+  .grid-container {
+    gap: 1px;
+    margin: 5px auto;
+    flex: 1;
+    overflow: hidden;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+  
+  .surrender-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Desktop/Laptop specific - allow scrolling */
+@media (min-width: 769px) {
+  body {
+    overflow: auto;
+  }
+  
+  .game-container {
+    min-height: 100vh;
+    overflow: visible;
+  }
+  
+  .grid-container {
+    overflow: visible;
+  }
+  
+  h2 {
+    font-size: clamp(24px, 5vw, 32px);
+  }
+  
+  p {
+    font-size: clamp(16px, 4vw, 24px);
+  }
+}
