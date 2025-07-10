@@ -1,6 +1,4 @@
 .grid-cell {
-    width: min(450px, 15vw); /* Max 450px, but adapts responsively */
-    height: min(450px, 15vw);
     display: flex;
     justify-content: center;
     align-items: center;
