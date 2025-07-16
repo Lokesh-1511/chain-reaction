@@ -316,6 +316,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               player={cell.player}
               onClick={handleCellClick}
               size={cellSize}
+              currentPlayer={currentPlayer}
             />
           ))
         )}

@@ -2,7 +2,7 @@ import React from 'react';
 
 const playerColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown'];
 
-const GridCell = ({ orb, player, onClick, x, y, size }) => {
+const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer }) => {
   const renderOrbs = () => {
     if (orb === 0) return null;
     
@@ -14,8 +14,8 @@ const GridCell = ({ orb, player, onClick, x, y, size }) => {
       height: `${orbSize}px`,
       borderRadius: '50%',
       backgroundColor: color,
-      border: '2px solid white',
-      boxShadow: '0 0 8px rgba(255, 255, 255, 0.6)',
+      border: `2px solid ${color}`,
+      boxShadow: `0 0 8px ${color}, 0 0 16px ${color}80`,
       position: 'absolute',
     };
     
@@ -86,6 +86,9 @@ const GridCell = ({ orb, player, onClick, x, y, size }) => {
     }
   };
 
+  // Get the current player's color for the glow effect
+  const currentPlayerColor = playerColors[(currentPlayer - 1) % 8];
+
   return (
     <div
       className="grid-cell"
@@ -98,8 +101,11 @@ const GridCell = ({ orb, player, onClick, x, y, size }) => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: orb === 0 ? 'lightgray' : 'transparent',
+        backgroundColor: 'transparent',
         position: 'relative',
+        border: `2px solid ${currentPlayerColor}`,
+        boxShadow: `0 0 15px ${currentPlayerColor}, 0 0 30px ${currentPlayerColor}40`,
+        transition: 'box-shadow 0.3s ease-in-out',
       }}
     >
       {renderOrbs()}

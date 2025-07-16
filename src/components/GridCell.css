@@ -2,16 +2,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: black;
-    border: 5px solid;
+    background-color: transparent;
     border-radius: 10px;
     cursor: pointer;
-    box-shadow: 0 0 10px var(--border-color);
-    transition: box-shadow 0.2s ease-in-out;
+    transition: box-shadow 0.3s ease-in-out;
     position: relative;
   }
   
   .grid-cell:hover {
-    box-shadow: 0 0 20px var(--border-color);
+    filter: brightness(1.2);
   }
   
