@@ -40,6 +40,18 @@ function createInitialState(row = 9, col = 6, players = 2) {
   };
 }
 
+function isValidMove(state, player, x, y) {
+  // Check if coordinates are within bounds
+  if (x < 0 || x >= state.row || y < 0 || y >= state.col) {
+    return false;
+  }
+  
+  const cell = state.grid[x][y];
+  
+  // Can place orb if cell is empty OR if cell belongs to the current player
+  return cell.value === 0 || cell.player === player;
+}
+
 function placeOrb(state, player, x, y) {
   const cell = state.grid[x][y];
   if (cell.player === player) {
@@ -119,6 +131,12 @@ function checkWin(state) {
 function applyMove(state, move, playerId) {
   if (state.status !== 'active') return state;
   if (state.currentPlayer !== playerId) return state;
+  
+  // Check if the move is valid before processing
+  if (!isValidMove(state, playerId, move.x, move.y)) {
+    return state; // Return unchanged state for invalid moves
+  }
+  
   processMoveWithExplosions(state, playerId, move.x, move.y);
   if (!state.playersMoved.includes(playerId)) {
     state.playersMoved.push(playerId);
@@ -140,4 +158,5 @@ module.exports = {
   createInitialState,
   applyMove,
   checkWin,
+  isValidMove,
 };

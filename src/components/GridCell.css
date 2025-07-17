@@ -7,9 +7,39 @@
     cursor: pointer;
     transition: box-shadow 0.3s ease-in-out;
     position: relative;
+    overflow: visible;
   }
   
   .grid-cell:hover {
     filter: brightness(1.2);
+  }
+
+  /* Explosion animations */
+  @keyframes explode-0--1 {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    30% { transform: translate(-50%, -80%) scale(0.9); opacity: 0.9; }
+    70% { transform: translate(-50%, -120%) scale(0.7); opacity: 0.5; }
+    100% { transform: translate(-50%, -150%) scale(0.4); opacity: 0; }
+  }
+
+  @keyframes explode-1-0 {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    30% { transform: translate(-20%, -50%) scale(0.9); opacity: 0.9; }
+    70% { transform: translate(20%, -50%) scale(0.7); opacity: 0.5; }
+    100% { transform: translate(50%, -50%) scale(0.4); opacity: 0; }
+  }
+
+  @keyframes explode-0-1 {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    30% { transform: translate(-50%, -20%) scale(0.9); opacity: 0.9; }
+    70% { transform: translate(-50%, 20%) scale(0.7); opacity: 0.5; }
+    100% { transform: translate(-50%, 50%) scale(0.4); opacity: 0; }
+  }
+
+  @keyframes explode--1-0 {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    30% { transform: translate(-80%, -50%) scale(0.9); opacity: 0.9; }
+    70% { transform: translate(-120%, -50%) scale(0.7); opacity: 0.5; }
+    100% { transform: translate(-150%, -50%) scale(0.4); opacity: 0; }
   }
   

@@ -5,6 +5,16 @@ import { getGameState } from '../services/api';
 import './GameBoard.css';
 
 const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }) => {
+  // Helper function to get maximum tokens a cell can hold
+  const getMaxTokens = (row, col, totalRows, totalCols) => {
+    const isCorner = (row === 0 || row === totalRows - 1) && (col === 0 || col === totalCols - 1);
+    const isEdge = row === 0 || row === totalRows - 1 || col === 0 || col === totalCols - 1;
+    
+    if (isCorner) return 1; // Corner cells can hold 2 tokens before explosion (explode at 2)
+    if (isEdge) return 2; // Edge cells can hold 3 tokens before explosion (explode at 3)
+    return 3; // Center cells can hold 4 tokens before explosion (explode at 4)
+  };
+
   const [cells, setCells] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [activePlayers, setActivePlayers] = useState([]);
@@ -23,6 +33,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [explodingCells, setExplodingCells] = useState(new Set());
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -69,9 +80,38 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     // Listen for updates
     socket.on('gameUpdate', ({ state }) => {
       setGameState(state);
+      
+      // Check for explosions by detecting cells that reached their limits
+      const newExplodingCells = new Set();
+      if (cells.length > 0) {
+        state.grid.forEach((row, i) => {
+          row.forEach((cell, j) => {
+            const position = `${i}-${j}`;
+            const maxTokens = getMaxTokens(i, j, state.grid.length, row.length);
+            
+            // If cell was at capacity in previous state but now has fewer tokens, it exploded
+            if (cells[i] && cells[i][j]) {
+              const prevCell = cells[i][j];
+              if (prevCell.tokenCount >= maxTokens && cell.tokenCount < maxTokens) {
+                newExplodingCells.add(position);
+              }
+            }
+          });
+        });
+      }
+      
       setCells(state.grid);
       setCurrentPlayer(state.currentPlayer);
       setActivePlayers(state.activePlayers);
+      
+      // Trigger explosion animations
+      if (newExplodingCells.size > 0) {
+        setExplodingCells(newExplodingCells);
+        // Clear explosion animations after 1.2 seconds to match animation duration
+        setTimeout(() => {
+          setExplodingCells(new Set());
+        }, 1200);
+      }
     });
     socket.on('gameOver', ({ winner }) => {
       setWinner(winner);
@@ -267,24 +307,26 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div ref={headerRef}>
-        <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          Game ID: {gameId || 'N/A'}
-          <button
-            onClick={handleCopyGameId}
-            style={{
-              padding: "2px 8px",
-              fontSize: "14px",
-              borderRadius: "4px",
-              border: "none",
-              background: "#333",
-              color: "#fff",
-              cursor: "pointer"
-            }}
-          >
-            {copied ? "Copied!" : "Copy"}
-          </button>
-          | Player ID: {playerId || 'N/A'}
-        </div>
+        {mode === 'multi' && (
+          <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            Game ID: {gameId || 'N/A'}
+            <button
+              onClick={handleCopyGameId}
+              style={{
+                padding: "2px 8px",
+                fontSize: "14px",
+                borderRadius: "4px",
+                border: "none",
+                background: "#333",
+                color: "#fff",
+                cursor: "pointer"
+              }}
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
+            | Player ID: {playerId || 'N/A'}
+          </div>
+        )}
         <h2>Chain Reaction Game</h2>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <p style={{ margin: 0 }}>Current Player: {getPlayerName(currentPlayer)}</p>
@@ -317,6 +359,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               onClick={handleCellClick}
               size={cellSize}
               currentPlayer={currentPlayer}
+              isExploding={explodingCells.has(`${i}-${j}`)}
             />
           ))
         )}
