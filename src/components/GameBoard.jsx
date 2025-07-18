@@ -202,6 +202,11 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     socket.emit('makeMove', { gameId, playerId: movePlayerId, move: { x, y } });
   };
 
+  const getPlayerColor = (player) => {
+    const colors = ['#ff4444', '#4444ff', '#44ff44', '#ffff44', '#ff44ff', '#ff8844', '#ff4488', '#88ff44'];
+    return colors[player - 1] || '#ffffff';
+  };
+
   const getPlayerName = (player) => {
     const playerNames = [
       "Player 1 (RED)", "Player 2 (BLUE)", 
@@ -267,87 +272,75 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     setShowSurrenderConfirm(false);
   };
 
-  const modalStyles = {
-    overlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    },
-    modal: {
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '10px',
-      textAlign: 'center',
-      maxWidth: '80%',
-      color: '#333'
-    },
-    button: {
-      margin: '10px',
-      padding: '10px 20px',
-      fontSize: '16px',
-      cursor: 'pointer',
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px'
-    }
-  };
-
   // Use backend state for row/col if available
   const displayRow = gameState?.row || row;
   const displayCol = gameState?.col || col;
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div ref={headerRef}>
+    <div className="game-container" ref={containerRef}>
+      {/* Game Header */}
+      <div className="game-header" ref={headerRef}>
+        <h1 className="game-title">⚡ Chain Reaction ⚡</h1>
+        
+        {/* Multiplayer Info - Only show in multiplayer mode */}
         {mode === 'multi' && (
-          <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Game ID: {gameId || 'N/A'}
-            <button
-              onClick={handleCopyGameId}
-              style={{
-                padding: "2px 8px",
-                fontSize: "14px",
-                borderRadius: "4px",
-                border: "none",
-                background: "#333",
-                color: "#fff",
-                cursor: "pointer"
-              }}
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-            | Player ID: {playerId || 'N/A'}
+          <div className="multiplayer-info">
+            <div className="game-id-section">
+              <span className="info-label">Game ID:</span>
+              <span className="info-value">{gameId || 'N/A'}</span>
+              <button
+                onClick={handleCopyGameId}
+                className="copy-button"
+              >
+                {copied ? "✓ Copied!" : "📋 Copy"}
+              </button>
+            </div>
+            <div className="player-id-section">
+              <span className="info-label">Player ID:</span>
+              <span className="info-value">{playerId || 'N/A'}</span>
+              {isHost && <span className="host-badge">👑 Host</span>}
+            </div>
           </div>
         )}
-        <h2>Chain Reaction Game</h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <p style={{ margin: 0 }}>Current Player: {getPlayerName(currentPlayer)}</p>
+        
+        {/* Current Player Display */}
+        <div className="current-player-section">
+          <div className="player-indicator">
+            <span className="player-label">Current Turn:</span>
+            <div className="player-info">
+              <div className={`player-color-indicator player-${currentPlayer}`}></div>
+              <span className="player-name">{getPlayerName(currentPlayer)}</span>
+            </div>
+          </div>
+          
+          {/* Surrender Button - Only in multiplayer */}
           {mode === 'multi' && !showModal && (
             <button
               onClick={handleSurrenderConfirm}
               className="surrender-button"
             >
-              Surrender
+              🏳️ Surrender
             </button>
           )}
         </div>
       </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
-        gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
-        gap: '5px',
-        margin: '20px auto',
-        justifyContent: 'center'
-      }}>
+
+      {/* Game Board */}
+      <div className="game-board-container">
+        <div 
+          className="game-board"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
+            gap: '6px',
+            padding: '20px',
+            background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
+            borderRadius: '15px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: `3px solid ${getPlayerColor(currentPlayer)}`,
+          }}
+        >
         {cells && cells.map((rowArr, i) =>
           rowArr.map((cell, j) => (
             <GridCell
@@ -363,48 +356,51 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             />
           ))
         )}
+        </div>
       </div>
+      
+      {/* Modals and overlays */}
       {showModal && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Game Over!</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>🎉 Game Over! 🎉</h2>
             <p>{getPlayerName(winner)} wins!</p>
-            <button onClick={handleReplay} style={modalStyles.button}>
-              {mode === 'single' ? 'Replay' : 'Request Replay'}
+            <button onClick={handleReplay} className="button button-replay">
+              {mode === 'single' ? '🔄 Play Again' : '🔄 Request Replay'}
             </button>
-            <button onClick={handleExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>
-              {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
+            <button onClick={handleExit} className="button button-exit">
+              {mode === 'single' ? '🚪 Exit to Menu' : '🚪 Leave Game'}
             </button>
           </div>
         </div>
       )}
       
       {replayRequested && !hasResponded && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Replay Request</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>🔄 Replay Request</h2>
             <p>{replayMessage}</p>
             <p>Do you want to play again?</p>
             <button 
               onClick={() => handleReplayResponse(true)} 
-              style={{ ...modalStyles.button, backgroundColor: '#4CAF50' }}
+              className="button button-replay"
             >
-              Yes, Play Again
+              ✅ Yes, Play Again
             </button>
             <button 
               onClick={() => handleReplayResponse(false)} 
-              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+              className="button button-exit"
             >
-              No, I'll Leave
+              ❌ No, I'll Leave
             </button>
           </div>
         </div>
       )}
       
       {(replayRequested && hasResponded) || showReplayWaiting ? (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Waiting for Other Players</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>⏳ Waiting for Other Players</h2>
             <p>
               {showReplayWaiting 
                 ? "Waiting for all players to respond to your replay request..." 
@@ -413,44 +409,53 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             {waitingForPlayers.length > 0 && (
               <p>Still waiting for: {waitingForPlayers.join(', ')}</p>
             )}
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</div>
+            <div style={{ margin: '20px 0' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '4px solid rgba(255,255,255,0.3)', 
+                borderTop: '4px solid #ffd700', 
+                borderRadius: '50%', 
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto'
+              }}></div>
             </div>
           </div>
         </div>
       ) : null}
 
       {showGameClosed && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Game Closed</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>🚪 Game Closed</h2>
             <p>{gameClosedMessage}</p>
-            <button onClick={onExit} style={modalStyles.button}>
-              Back to Menu
+            <button onClick={onExit} className="button button-exit">
+              🏠 Back to Menu
             </button>
           </div>
         </div>
       )}
 
       {showSurrenderConfirm && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Surrender Game</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>🏳️ Surrender Game</h2>
             <p>Are you sure you want to surrender?</p>
-            <p style={{ fontSize: '14px', color: '#666' }}>
+            <p style={{ fontSize: '14px', opacity: 0.8 }}>
               {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
             </p>
             <button 
               onClick={handleSurrender} 
-              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+              className="button button-exit"
             >
-              Yes, Surrender
+              ✅ Yes, Surrender
             </button>
             <button 
               onClick={handleSurrenderCancel} 
-              style={{ ...modalStyles.button, backgroundColor: '#666' }}
+              className="button"
+              style={{ background: 'linear-gradient(45deg, #666, #999)' }}
             >
-              Cancel
+              ❌ Cancel
             </button>
           </div>
         </div>

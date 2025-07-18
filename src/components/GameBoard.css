@@ -1,158 +1,332 @@
-/* Center everything */
+/* Game Container */
+.game-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: white;
+  overflow: auto;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Game Header */
+.game-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.game-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 3s ease infinite;
+  margin: 0 0 20px 0;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Multiplayer Info */
+.multiplayer-info {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.game-id-section, .player-id-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-label {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.info-value {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 1rem;
+}
+
+.copy-button {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: 15px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.copy-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.host-badge {
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+/* Current Player Section */
+.current-player-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 20px;
+}
+
+.player-indicator {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.player-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.player-color-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.player-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+/* Game Board Container */
+.game-board-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+.game-board {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.game-board:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Surrender Button */
+.surrender-button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background: linear-gradient(45deg, #ff4757, #ff3838);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+}
+
+.surrender-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 71, 87, 0.4);
+}
+
+.surrender-button:active {
+  transform: translateY(0);
+}
+
+/* Player Colors */
+.player-1 { background-color: #ff4757; }
+.player-2 { background-color: #5352ed; }
+.player-3 { background-color: #7bed9f; }
+.player-4 { background-color: #ffa502; }
+.player-5 { background-color: #ff6b9d; }
+.player-6 { background-color: #ff7675; }
+.player-7 { background-color: #fd79a8; }
+.player-8 { background-color: #fdcb6e; }
+  
+  /* Global Body Styles */
 body {
-    background-color: #121212;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    font-family: Arial, sans-serif;
-    color: white;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .game-title {
+    font-size: 2rem;
   }
   
-  /* Game container */
+  .multiplayer-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .current-player-section {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
   .game-container {
-    text-align: center;
+    padding: 10px;
   }
   
-  /* Title */
-  h2 {
-    font-size: 28px;
-    margin-bottom: 15px;
+  .game-board {
+    padding: 15px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-title {
+    font-size: 1.8rem;
   }
   
-  /* Current Player display */
-  p {
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 20px;
+  .player-label {
+    font-size: 1rem;
   }
   
-  /* Grid Board */
-  .grid-container {
-    display: grid;
-    gap: 5px;
-    margin: 20px auto;
-    justify-content: center;
+  .player-name {
+    font-size: 1rem;
   }
-  
-  /* Loading animation for replay waiting */
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  /* Surrender button hover effect */
-  .surrender-button {
-    padding: 8px 16px;
-    font-size: 14px;
-    background-color: #ff4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.2s ease;
-  }
-  
-  .surrender-button:hover {
-    background-color: #cc0000;
-  }
-  
-  .surrender-button:active {
-    background-color: #990000;
-  }
-  
-  /* Grid Cell */
-  .grid-cell {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 10px;
-    background-color: #333;
-    font-size: 22px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: transform 0.1s ease-in-out;
-  }
-  
-  /* Click effect */
-  .grid-cell:active {
-    transform: scale(0.9);
-  }
-  
-  /* Player colors */
-  .player-1 { background-color: red; }
-  .player-2 { background-color: blue; }
-  .player-3 { background-color: green; }
-  .player-4 { background-color: yellow; }
-  .player-5 { background-color: purple; }
-  .player-6 { background-color: orange; }
-  .player-7 { background-color: pink; }
-  .player-8 { background-color: brown; }
-  
-  /* Winner Modal */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .modal-content {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    max-width: 80%;
-    color: black;
-  }
-  
-  .modal-content h2 {
-    font-size: 26px;
-    margin-bottom: 10px;
-  }
-  
-  .modal-content p {
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 15px;
-  }
-  
-  /* Buttons */
-  .button {
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    transition: background-color 0.2s ease-in-out;
-    margin: 10px;
-  }
-  
-  .button-replay {
-    background-color: #4CAF50;
-    color: white;
-  }
-  
-  .button-replay:hover {
-    background-color: #45a049;
-  }
-  
-  .button-exit {
-    background-color: #f44336;
-    color: white;
-  }
-  
-  .button-exit:hover {
-    background-color: #d32f2f;
-  }
+}
+
+/* Winner Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: linear-gradient(145deg, #2c2c54, #40407a);
+  padding: 30px;
+  border-radius: 20px;
+  text-align: center;
+  max-width: 90%;
+  color: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.modal-content h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modal-content p {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+/* Buttons */
+.button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+  margin: 8px;
+  min-width: 120px;
+}
+
+.button-replay {
+  background: linear-gradient(45deg, #4CAF50, #8BC34A);
+  color: white;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.button-replay:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+}
+
+.button-exit {
+  background: linear-gradient(45deg, #f44336, #e53935);
+  color: white;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.button-exit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4);
+}
+
+/* Loading Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

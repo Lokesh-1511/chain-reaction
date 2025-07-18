@@ -204,9 +204,11 @@ function Menu() {
       ) : (
         <>
           <GameBoard row={row} col={col} players={players} onExit={handleExit} gameId={gameId} playerId={playerId} mode={mode} isHost={isHost} />
-          <div style={{ color: 'yellow', marginTop: '10px' }}>
-            Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'} | {isHost ? 'Host' : 'Player'}
-          </div>
+          {mode === 'multi' && (
+            <div style={{ color: 'yellow', marginTop: '10px' }}>
+              Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'} | {isHost ? 'Host' : 'Player'}
+            </div>
+          )}
         </>
       )}
     </div>
