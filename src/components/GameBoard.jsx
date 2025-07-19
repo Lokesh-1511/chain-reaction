@@ -33,6 +33,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [hasSurrendered, setHasSurrendered] = useState(false);
   const [explodingCells, setExplodingCells] = useState(new Set());
   const containerRef = useRef(null);
   const headerRef = useRef(null);
@@ -146,6 +147,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setHasResponded(false);
       setWaitingForPlayers([]);
       setShowReplayWaiting(false);
+      setHasSurrendered(false); // Reset surrender flag for new game
     });
 
     socket.on('replayCancelled', () => {
@@ -193,13 +195,24 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   }, [gameId, playerId]);
 
   const handleCellClick = (x, y) => {
-    // In single player mode, any click is valid.
-    // In multiplayer, only the current player can make a move.
-    if (showModal || (mode === 'multi' && currentPlayer !== playerId)) return;
-
-    // In single player mode, we send the currentPlayer's ID with the move.
-    const movePlayerId = mode === 'single' ? currentPlayer : playerId;
-    socket.emit('makeMove', { gameId, playerId: movePlayerId, move: { x, y } });
+    // Basic validation: no moves if modal is showing or player has surrendered
+    if (showModal || hasSurrendered) return;
+    
+    // In single player mode, any click is valid
+    if (mode === 'single') {
+      socket.emit('makeMove', { gameId, playerId: currentPlayer, move: { x, y } });
+      return;
+    }
+    
+    // In multiplayer mode, only allow moves if it's the player's turn
+    // Exception: if only 1 active player, allow them to play
+    if (mode === 'multi') {
+      const isSingleActivePlayer = activePlayers && activePlayers.length === 1;
+      if (!isSingleActivePlayer && currentPlayer !== playerId) {
+        return; // Not this player's turn
+      }
+      socket.emit('makeMove', { gameId, playerId, move: { x, y } });
+    }
   };
 
   const getPlayerColor = (player) => {
@@ -257,7 +270,11 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   const handleSurrender = () => {
     if (mode === 'multi' && gameId && playerId) {
+      setHasSurrendered(true); // Mark that this player has surrendered
       socket.emit('surrenderGame', { gameId, playerId });
+      // Close the surrender confirmation modal
+      setShowSurrenderConfirm(false);
+      // Don't exit immediately - wait for gameOver event like other players
     } else {
       // In single player mode, just exit
       onExit();
@@ -306,15 +323,31 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         {/* Current Player Display */}
         <div className="current-player-section">
           <div className="player-indicator">
-            <span className="player-label">Current Turn:</span>
+            <span className="player-label">
+              {activePlayers && activePlayers.length === 1 ? "Playing:" : "Current Turn:"}
+            </span>
             <div className="player-info">
               <div className={`player-color-indicator player-${currentPlayer}`}></div>
               <span className="player-name">{getPlayerName(currentPlayer)}</span>
             </div>
           </div>
           
+          {/* Show surrender status */}
+          {hasSurrendered && (
+            <div style={{ 
+              backgroundColor: 'rgba(255, 71, 87, 0.2)', 
+              border: '1px solid rgba(255, 71, 87, 0.4)',
+              borderRadius: '15px',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              color: '#ffcccb'
+            }}>
+              🏳️ You have surrendered
+            </div>
+          )}
+          
           {/* Surrender Button - Only in multiplayer */}
-          {mode === 'multi' && !showModal && (
+          {mode === 'multi' && !showModal && !hasSurrendered && (
             <button
               onClick={handleSurrenderConfirm}
               className="surrender-button"
@@ -363,8 +396,20 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🎉 Game Over! 🎉</h2>
-            <p>{getPlayerName(winner)} wins!</p>
+            {hasSurrendered ? (
+              <>
+                <h2>�️ You Surrendered</h2>
+                <p>{getPlayerName(winner)} wins!</p>
+                <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                  You can still participate in replay requests.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>�🎉 Game Over! 🎉</h2>
+                <p>{getPlayerName(winner)} wins!</p>
+              </>
+            )}
             <button onClick={handleReplay} className="button button-replay">
               {mode === 'single' ? '🔄 Play Again' : '🔄 Request Replay'}
             </button>

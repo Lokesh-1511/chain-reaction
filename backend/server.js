@@ -38,6 +38,32 @@ function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
   return games[gameId];
 }
 
+// Helper: Completely reset game state while preserving player information
+function resetGameState(game) {
+  // For Play Again, restore ALL original players (not just currently active ones)
+  const allOriginalPlayers = game.players; // Use all original players
+  const originalRow = game.state.row;
+  const originalCol = game.state.col;
+  
+  // Create completely fresh game state with all original players
+  game.state = createInitialState(originalRow, originalCol, allOriginalPlayers.length);
+  
+  // Restore all original players
+  game.state.activePlayers = [...allOriginalPlayers];
+  game.state.currentPlayer = allOriginalPlayers[0]; // Start with first player
+  
+  // Reset all game status and clear surrendered players
+  game.status = 'active';
+  game.surrenderedPlayers = new Set(); // Clear all surrendered players
+  game.replayRequests = {};
+  game.replayRequestedBy = null;
+  
+  // Make sure activePlayers set includes all original players again
+  game.activePlayers = new Set(allOriginalPlayers);
+  
+  return game.state;
+}
+
 // Log every request
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
@@ -121,22 +147,27 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // If not the host, reduce player count and notify others
-    if (game.activePlayers.size < 2) {
-      // Not enough players to continue
+    // Update game state with reduced player count
+    game.state.players = game.activePlayers.size;
+    
+    // Remove the player from active players in game state
+    const activePlayerArray = Array.from(game.activePlayers);
+    game.state.activePlayers = activePlayerArray;
+    
+    // Check if there's only one player left - they win
+    if (game.activePlayers.size === 1) {
+      const winner = activePlayerArray[0];
+      game.state.status = 'finished';
+      game.state.winner = winner;
+      io.to(`game_${gameId}`).emit('gameOver', { winner });
+    } else if (game.activePlayers.size < 1) {
+      // If no players remain, close the game
       io.to(`game_${gameId}`).emit('gameClosedByHost', { 
         gameId, 
-        message: 'Game closed: Not enough players to continue' 
+        message: 'Game closed: No players remaining' 
       });
       delete games[gameId];
     } else {
-      // Update game state with reduced player count
-      game.state.players = game.activePlayers.size;
-      
-      // Remove the player from active players in game state
-      const activePlayerArray = Array.from(game.activePlayers);
-      game.state.activePlayers = activePlayerArray;
-      
       // Notify remaining players
       io.to(`game_${gameId}`).emit('playerLeft', { 
         gameId, 
@@ -196,20 +227,27 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // If not enough players remain, close the game
-      if (game.activePlayers.size < 2) {
-        io.to(`game_${gameId}`).emit('gameClosedByHost', { 
-          gameId, 
-          message: 'Game closed: Not enough players to continue' 
-        });
-        delete games[gameId];
-        return;
-      }
-      
       // Update game state with reduced player count
       game.state.players = game.activePlayers.size;
       const activePlayerArray = Array.from(game.activePlayers);
       game.state.activePlayers = activePlayerArray;
+      
+      // Check if there's only one player left - they win
+      if (game.activePlayers.size === 1) {
+        const winner = activePlayerArray[0];
+        game.state.status = 'finished';
+        game.state.winner = winner;
+        io.to(`game_${gameId}`).emit('gameOver', { winner });
+        return;
+      } else if (game.activePlayers.size < 1) {
+        // If no players remain, close the game
+        io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+          gameId, 
+          message: 'Game closed: No players remaining' 
+        });
+        delete games[gameId];
+        return;
+      }
       
       // Notify remaining players
       io.to(`game_${gameId}`).emit('playerLeft', { 
@@ -226,14 +264,11 @@ io.on('connection', (socket) => {
       const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
       
       if (allActivePlayersResponded && allActivePlayersAgreed) {
-        // Reset the game state for remaining players
-        game.state = createInitialState(game.state.row, game.state.col, game.activePlayers.size);
-        game.status = 'active';
-        game.replayRequests = {};
-        game.replayRequestedBy = null;
+        // Completely reset the game state while preserving player information
+        const newState = resetGameState(game);
         
         // Notify remaining players that the game is restarting
-        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: game.state });
+        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: newState });
       }
       
       return;
@@ -246,14 +281,11 @@ io.on('connection', (socket) => {
     
     if (allActivePlayersResponded) {
       if (allActivePlayersAgreed) {
-        // Reset the game state
-        game.state = createInitialState(game.state.row, game.state.col, game.activePlayers.size);
-        game.status = 'active';
-        game.replayRequests = {};
-        game.replayRequestedBy = null;
+        // Completely reset the game state while preserving player information  
+        const newState = resetGameState(game);
         
         // Notify all players that the game is restarting
-        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: game.state });
+        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: newState });
       } else {
         // Not all players agreed, cancel the replay
         game.replayRequests = {};
@@ -289,39 +321,37 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // If not enough players remain, close the game
-    if (game.activePlayers.size < 2) {
+    // Update game state with reduced player count
+    game.state.players = game.activePlayers.size;
+    
+    // Remove the player from active players in game state
+    const activePlayerArray = Array.from(game.activePlayers);
+    game.state.activePlayers = activePlayerArray;
+    
+    // Check if there's only one player left - they win
+    if (game.activePlayers.size === 1) {
+      const winner = activePlayerArray[0];
+      game.state.status = 'finished';
+      game.state.winner = winner;
+      io.to(`game_${gameId}`).emit('gameOver', { winner });
+    } else if (game.activePlayers.size < 1) {
+      // If no players remain, close the game
       io.to(`game_${gameId}`).emit('gameClosedByHost', { 
         gameId, 
-        message: 'Game closed: Not enough players to continue' 
+        message: 'Game closed: No players remaining' 
       });
       delete games[gameId];
     } else {
-      // Update game state with reduced player count
-      game.state.players = game.activePlayers.size;
+      // Notify remaining players about the surrender
+      io.to(`game_${gameId}`).emit('playerSurrendered', { 
+        gameId, 
+        playerId, 
+        remainingPlayers: activePlayerArray,
+        message: `Player ${playerId} has surrendered` 
+      });
       
-      // Remove the player from active players in game state
-      const activePlayerArray = Array.from(game.activePlayers);
-      game.state.activePlayers = activePlayerArray;
-      
-      // Check if there's only one player left - they win
-      if (game.activePlayers.size === 1) {
-        const winner = activePlayerArray[0];
-        game.state.status = 'finished';
-        game.state.winner = winner;
-        io.to(`game_${gameId}`).emit('gameOver', { winner });
-      } else {
-        // Notify remaining players about the surrender
-        io.to(`game_${gameId}`).emit('playerSurrendered', { 
-          gameId, 
-          playerId, 
-          remainingPlayers: activePlayerArray,
-          message: `Player ${playerId} has surrendered` 
-        });
-        
-        // Update the game state for remaining players
-        io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
-      }
+      // Update the game state for remaining players
+      io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
     }
   });
 });

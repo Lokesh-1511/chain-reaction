@@ -144,10 +144,17 @@ function applyMove(state, move, playerId) {
   // Advance to next player
   const updatedPlayers = checkPlayerElimination(state);
   state.activePlayers = updatedPlayers;
-  if (updatedPlayers.length === 1) {
+  
+  // Only end the game if we have multiple players configured but only 1 remains
+  // Single-player games (state.players === 1) should continue indefinitely
+  if (state.players > 1 && updatedPlayers.length === 1) {
     state.winner = updatedPlayers[0];
     state.status = 'finished';
+  } else if (updatedPlayers.length === 0) {
+    // No players left - game over
+    state.status = 'finished';
   } else {
+    // Continue the game - advance to next player
     const idx = updatedPlayers.indexOf(playerId);
     state.currentPlayer = updatedPlayers[(idx + 1) % updatedPlayers.length];
   }
