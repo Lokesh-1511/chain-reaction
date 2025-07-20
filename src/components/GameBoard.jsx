@@ -130,15 +130,16 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         const headerHeight = headerRef.current.offsetHeight;
         const availableHeight = containerHeight - headerHeight;
         const containerWidth = containerRef.current.offsetWidth;
-        const gap = 5;
-        const margin = 40; // 20px top and bottom margin for the grid
+        const gap = 6; // Match the gap in the grid
+        const padding = 50; // 25px padding on each side
+        const margin = 120; // Increased margin to prevent overlap with header
 
         // Calculate cell size based on available container width and height
-        const sizeByWidth = (containerWidth - (col + 1) * gap) / col;
-        const sizeByHeight = (availableHeight - (row + 1) * gap - margin) / row;
+        const sizeByWidth = (containerWidth - padding - 40) / col - gap; // Account for padding and margins
+        const sizeByHeight = (availableHeight - padding - margin) / row - gap;
 
-        // Use the smaller of the two to ensure it fits both ways, with a min of 40 and max of 60
-        setCellSize(Math.floor(Math.min(Math.max(sizeByWidth, sizeByHeight, 40), 60)));
+        // Use the smaller of the two to ensure it fits both ways, with a min of 30 and max of 55
+        setCellSize(Math.floor(Math.min(Math.max(sizeByWidth, sizeByHeight, 30), 55)));
       }
     };
 
@@ -316,8 +317,11 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   }, [gameId, playerId, mode, row, col, players]);
 
   const handleCellClick = (x, y) => {
-    // Basic validation: no moves if modal is showing or player has surrendered
-    if (showModal || hasSurrendered) return;
+    // Basic validation: no moves if modal is showing
+    if (showModal) return;
+    
+    // In local mode, only check for surrendered state in multiplayer
+    if (mode === 'multi' && hasSurrendered) return;
     
     // In single player mode, handle moves locally
     if (mode === 'single') {
@@ -463,9 +467,51 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setShowSurrenderConfirm(false);
       // Don't exit immediately - wait for gameOver event like other players
     } else {
-      // In single player mode, just exit to menu
+      // In local mode, eliminate the current player like they naturally lost
       setShowSurrenderConfirm(false);
-      onExit();
+      
+      // Remove all orbs belonging to the current player from the grid
+      const newGrid = cells.map(row => 
+        row.map(cell => 
+          cell.player === currentPlayer 
+            ? { value: 0, player: 0 } 
+            : cell
+        )
+      );
+      
+      // Remove current player from active players
+      const newActivePlayers = activePlayers.filter(p => p !== currentPlayer);
+      
+      // Determine next player
+      let nextPlayer;
+      if (newActivePlayers.length > 0) {
+        // Find the next player in the sequence
+        const currentIndex = activePlayers.indexOf(currentPlayer);
+        const remainingAfterCurrent = activePlayers.slice(currentIndex + 1).filter(p => p !== currentPlayer);
+        const remainingBeforeCurrent = activePlayers.slice(0, currentIndex).filter(p => p !== currentPlayer);
+        const nextInSequence = [...remainingAfterCurrent, ...remainingBeforeCurrent];
+        nextPlayer = nextInSequence.length > 0 ? nextInSequence[0] : newActivePlayers[0];
+      }
+      
+      // Update game state
+      const newState = {
+        ...gameState,
+        grid: newGrid,
+        activePlayers: newActivePlayers,
+        players: newActivePlayers.length,
+        currentPlayer: nextPlayer
+      };
+      
+      setGameState(newState);
+      setActivePlayers(newActivePlayers);
+      setCurrentPlayer(nextPlayer);
+      setCells(newGrid);
+      
+      // Check if only one player remains (game over)
+      if (newActivePlayers.length === 1) {
+        setWinner(newActivePlayers[0]);
+        setShowModal(true);
+      }
     }
   };
 
@@ -555,11 +601,15 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
             gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
             gap: '6px',
-            padding: '20px',
+            padding: '25px',
             background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
             borderRadius: '15px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
             border: `3px solid ${getPlayerColor(currentPlayer)}`,
+            margin: '10px',
+            width: `${displayCol * cellSize + (displayCol + 1) * 6 + 50}px`,
+            height: `${displayRow * cellSize + (displayRow + 1) * 6 + 50}px`,
+            boxSizing: 'border-box',
           }}
         >
         {cells && cells.map((rowArr, i) =>
@@ -672,18 +722,23 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       {showSurrenderConfirm && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🏳️ {mode === 'single' ? 'Exit Game' : 'Surrender Game'}</h2>
-            <p>Are you sure you want to {mode === 'single' ? 'exit the game' : 'surrender'}?</p>
+            <h2>🏳️ {mode === 'single' ? 'Surrender Game' : 'Surrender Game'}</h2>
+            <p>Are you sure you want to {mode === 'single' ? 'surrender and be eliminated from the game' : 'surrender'}?</p>
             {mode === 'multi' && (
               <p style={{ fontSize: '14px', opacity: 0.8 }}>
                 {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
+              </p>
+            )}
+            {mode === 'single' && (
+              <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                You will be eliminated and the remaining players will continue playing locally.
               </p>
             )}
             <button 
               onClick={handleSurrender} 
               className="button button-exit"
             >
-              ✅ Yes, {mode === 'single' ? 'Exit' : 'Surrender'}
+              ✅ Yes, Surrender
             </button>
             <button 
               onClick={handleSurrenderCancel} 

@@ -8,11 +8,12 @@
   background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
   background-size: 400% 400%;
   animation: gradientShift 8s ease infinite;
-  padding: 20px;
+  padding: 15px;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
-  overflow: auto;
+  overflow: auto; /* Allow scrolling when content is larger than viewport */
+  gap: 10px; /* Add gap between header and game board */
 }
 
 @keyframes gradientShift {
@@ -24,9 +25,11 @@
 /* Game Header */
 .game-header {
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   width: 100%;
   flex-shrink: 0;
+  z-index: 10; /* Ensure header stays above game board */
+  position: relative;
 }
 
 .game-title {
@@ -50,6 +53,7 @@
   align-items: center;
   margin-bottom: 15px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .game-id-section, .player-id-section {
@@ -62,6 +66,8 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   font-size: 0.9rem;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .info-label {
@@ -111,8 +117,10 @@
   align-items: center;
   width: 100%;
   max-width: 600px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   gap: 10px;
+  position: relative;
+  z-index: 10; /* Ensure it stays above game board */
 }
 
 .player-indicator {
@@ -160,14 +168,16 @@
   align-items: center;
   flex: 1;
   min-height: 0; /* Allow flex item to shrink */
-  overflow: auto; /* Allow scrolling if needed */
+  overflow: visible; /* Ensure borders aren't clipped */
+  padding: 10px; /* Reduced padding to prevent overlap */
+  margin-top: 10px; /* Add top margin for spacing */
 }
 
 .game-board {
   position: relative;
   transition: all 0.3s ease;
-  max-width: 100%;
-  max-height: 100%;
+  /* Remove max-width and max-height to let inline styles control size */
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .game-board:hover {
@@ -226,12 +236,15 @@ body {
   .multiplayer-info {
     gap: 10px;
     margin-bottom: 10px;
+    justify-content: center;
   }
   
   .game-id-section, .player-id-section {
     padding: 4px 8px;
     font-size: 0.8rem;
     border-radius: 15px;
+    min-width: 120px;
+    justify-content: center;
   }
   
   .info-label {
@@ -283,6 +296,15 @@ body {
   .game-board {
     padding: 15px !important;
   }
+  
+  .game-board-container {
+    padding: 5px;
+    overflow: auto; /* Allow scrolling on mobile */
+  }
+  
+  .game-board {
+    margin: 5px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -292,16 +314,15 @@ body {
   }
   
   .multiplayer-info {
-    flex-direction: row;
+    flex-direction: column;
     gap: 8px;
-    justify-content: center;
+    align-items: center;
   }
   
   .game-id-section, .player-id-section {
-    flex-direction: column;
-    text-align: center;
-    gap: 2px;
-    padding: 3px 6px;
+    width: auto;
+    min-width: 200px;
+    justify-content: center;
   }
   
   .current-player-section {
@@ -341,6 +362,7 @@ body {
   
   .game-id-section, .player-id-section {
     width: 100%;
+    max-width: 280px;
     justify-content: center;
   }
 }

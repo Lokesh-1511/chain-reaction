@@ -59,7 +59,7 @@ function Menu() {
 
   const handleExit = () => {
     setPage("menu");
-    setGameId("");
+    // Don't clear gameId to keep it persistent
     setPlayerId(null);
     setIsHost(false);
     setJoinGameId("");
@@ -172,28 +172,11 @@ function Menu() {
                 <span>Mode</span>
               </div>
               <select className="game-select" value={mode} onChange={handleModeChange}>
-                <option value="single">🤖 Single Player</option>
-                <option value="multi">🌐 Multiplayer</option>
+                <option value="single">🏠 Local Mode</option>
+                <option value="multi">🌐 Online Multiplayer</option>
               </select>
             </div>
           </div>
-
-          {/* Multiplayer Game ID Section */}
-          {mode === "multi" && gameId && (
-            <div className="game-id-section">
-              <h3 className="section-subtitle">🔗 Share Game ID</h3>
-              <div className="game-id-display">
-                <span className="game-id-text">{gameId}</span>
-                <button
-                  onClick={handleCopyGameId}
-                  className="copy-id-button"
-                >
-                  {copied ? "✅ Copied!" : "📋 Copy"}
-                </button>
-              </div>
-              <p className="share-instruction">Share this ID with friends to join!</p>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="action-buttons">
@@ -205,21 +188,42 @@ function Menu() {
               🚀 Start Game
             </button>
 
-            {/* Join Game Section */}
+            {/* Multiplayer Section */}
             {mode === 'multi' && (
-              <div className="join-section">
-                <h3 className="section-subtitle">🚪 Join Existing Game</h3>
-                <div className="join-input-group">
-                  <input
-                    className="join-input"
-                    type="text"
-                    placeholder="Enter Game ID"
-                    value={joinGameId}
-                    onChange={e => setJoinGameId(e.target.value)}
-                  />
-                  <button onClick={handleJoinGame} className="join-button">
-                    🎮 Join
-                  </button>
+              <div className="multiplayer-section">
+                <div className="multiplayer-boxes">
+                  {/* Share Game ID Box */}
+                  <div className="share-game-box">
+                    <h3 className="box-title">🔗 Share Game ID</h3>
+                    <div className="game-id-display">
+                      <span className="game-id-text">{gameId}</span>
+                      <button
+                        onClick={handleCopyGameId}
+                        className="copy-id-button"
+                      >
+                        {copied ? "✅ Copied!" : "📋 Copy"}
+                      </button>
+                    </div>
+                    <p className="box-instruction">Share this ID with friends to join!</p>
+                  </div>
+
+                  {/* Join Game Box */}
+                  <div className="join-game-box">
+                    <h3 className="box-title">🚪 Join Existing Game</h3>
+                    <div className="join-input-group">
+                      <input
+                        className="join-input"
+                        type="text"
+                        placeholder="Enter Game ID"
+                        value={joinGameId}
+                        onChange={e => setJoinGameId(e.target.value)}
+                      />
+                      <button onClick={handleJoinGame} className="join-button">
+                        🎮 Join
+                      </button>
+                    </div>
+                    <p className="box-instruction">Enter a friend's Game ID to join their game!</p>
+                  </div>
                 </div>
               </div>
             )}
