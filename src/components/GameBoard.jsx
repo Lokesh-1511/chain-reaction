@@ -38,6 +38,91 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
+  // Local game logic for singleplayer mode
+  const applyMoveLocally = (state, move, playerId) => {
+    if (state.status !== 'active') return state;
+    
+    // Create a deep copy of the state
+    const newState = JSON.parse(JSON.stringify(state));
+    
+    // Place orb
+    const cell = newState.grid[move.x][move.y];
+    if (cell.player === playerId) {
+      cell.value++;
+    } else if (cell.value === 0) {
+      cell.value = 1;
+      cell.player = playerId;
+    }
+    
+    // Process explosions
+    let explosionsOccurred;
+    do {
+      explosionsOccurred = false;
+      const explosionQueue = [];
+      for (let i = 0; i < newState.row; i++) {
+        for (let j = 0; j < newState.col; j++) {
+          if (newState.grid[i][j].value > newState.grid[i][j].max_value) {
+            explosionQueue.push({ i, j });
+          }
+        }
+      }
+      if (explosionQueue.length > 0) {
+        explosionsOccurred = true;
+        for (const { i, j } of explosionQueue) {
+          const explodingCell = newState.grid[i][j];
+          explodingCell.value = 0;
+          explodingCell.player = 0;
+          const directions = [
+            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+          ];
+          for (const { dx, dy } of directions) {
+            const nx = i + dx;
+            const ny = j + dy;
+            if (nx >= 0 && nx < newState.row && ny >= 0 && ny < newState.col) {
+              const neighbor = newState.grid[nx][ny];
+              neighbor.value++;
+              neighbor.player = playerId;
+            }
+          }
+        }
+      }
+    } while (explosionsOccurred);
+    
+    // Add to moved players if not already
+    if (!newState.playersMoved.includes(playerId)) {
+      newState.playersMoved.push(playerId);
+    }
+    
+    // Check for player elimination
+    const playersWithOrbs = new Set();
+    newState.grid.forEach(row => {
+      row.forEach(cell => {
+        if (cell.player !== 0) {
+          playersWithOrbs.add(cell.player);
+        }
+      });
+    });
+    const updatedActivePlayers = newState.activePlayers.filter(
+      p => playersWithOrbs.has(p) || !newState.playersMoved.includes(p)
+    );
+    newState.activePlayers = updatedActivePlayers;
+    
+    // Check win condition
+    if (newState.players > 1 && updatedActivePlayers.length === 1) {
+      newState.winner = updatedActivePlayers[0];
+      newState.status = 'finished';
+    } else if (updatedActivePlayers.length === 0) {
+      newState.status = 'finished';
+    } else {
+      // Advance to next player
+      const idx = updatedActivePlayers.indexOf(playerId);
+      newState.currentPlayer = updatedActivePlayers[(idx + 1) % updatedActivePlayers.length];
+    }
+    
+    return newState;
+  };
+
   useEffect(() => {
     const calculateCellSize = () => {
       if (containerRef.current && headerRef.current) {
@@ -69,6 +154,42 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   useEffect(() => {
     if (!gameId) return;
+    
+    // For singleplayer, only initialize the game state locally
+    if (mode === 'single') {
+      const initialState = {
+        grid: Array(row).fill().map((_, i) => 
+          Array(col).fill().map((_, j) => {
+            const cell = { value: 0, player: 0, max_value: 0 };
+            // Set max value based on position
+            if ((i === 0 || i === row - 1) && (j === 0 || j === col - 1)) {
+              cell.max_value = 1; // Corner cells
+            } else if (i === 0 || i === row - 1 || j === 0 || j === col - 1) {
+              cell.max_value = 2; // Edge cells
+            } else {
+              cell.max_value = 3; // Inner cells
+            }
+            return cell;
+          })
+        ),
+        row: row,
+        col: col,
+        players: players,
+        currentPlayer: 1,
+        activePlayers: Array.from({ length: players }, (_, i) => i + 1),
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      setGameState(initialState);
+      setCells(initialState.grid);
+      setCurrentPlayer(1);
+      setActivePlayers(initialState.activePlayers);
+      return;
+    }
+    
+    // For multiplayer, handle server connections
     // Join game room
     socket.emit('joinGame', { gameId, playerId });
     // Fetch initial state
@@ -192,15 +313,47 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       socket.off('playerLeft');
       socket.off('playerSurrendered');
     };
-  }, [gameId, playerId]);
+  }, [gameId, playerId, mode, row, col, players]);
 
   const handleCellClick = (x, y) => {
     // Basic validation: no moves if modal is showing or player has surrendered
     if (showModal || hasSurrendered) return;
     
-    // In single player mode, any click is valid
+    // In single player mode, handle moves locally
     if (mode === 'single') {
-      socket.emit('makeMove', { gameId, playerId: currentPlayer, move: { x, y } });
+      // Create a local copy of the current game state
+      const currentState = gameState || {
+        grid: cells,
+        row: displayRow,
+        col: displayCol,
+        players: players,
+        currentPlayer: currentPlayer,
+        activePlayers: activePlayers,
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      // Check if move is valid
+      if (x < 0 || x >= currentState.row || y < 0 || y >= currentState.col) return;
+      const cell = currentState.grid[x][y];
+      if (cell.value !== 0 && cell.player !== currentState.currentPlayer) return;
+      
+      // Apply move locally
+      const newState = applyMoveLocally(currentState, { x, y }, currentState.currentPlayer);
+      
+      // Update state
+      setGameState(newState);
+      setCells(newState.grid);
+      setCurrentPlayer(newState.currentPlayer);
+      setActivePlayers(newState.activePlayers);
+      
+      // Check for game over
+      if (newState.status === 'finished') {
+        setWinner(newState.winner);
+        setShowModal(true);
+      }
+      
       return;
     }
     
@@ -232,7 +385,41 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   const handleReplay = () => {
     if (mode === 'single') {
-      window.location.reload();
+      // For singleplayer, restart the game locally without reloading the page
+      const newState = {
+        grid: Array(displayRow).fill().map((_, i) => 
+          Array(displayCol).fill().map((_, j) => {
+            const cell = { value: 0, player: 0, max_value: 0 };
+            // Set max value based on position
+            if ((i === 0 || i === displayRow - 1) && (j === 0 || j === displayCol - 1)) {
+              cell.max_value = 1; // Corner cells
+            } else if (i === 0 || i === displayRow - 1 || j === 0 || j === displayCol - 1) {
+              cell.max_value = 2; // Edge cells
+            } else {
+              cell.max_value = 3; // Inner cells
+            }
+            return cell;
+          })
+        ),
+        row: displayRow,
+        col: displayCol,
+        players: players,
+        currentPlayer: 1,
+        activePlayers: Array.from({ length: players }, (_, i) => i + 1),
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      // Reset all game state
+      setGameState(newState);
+      setCells(newState.grid);
+      setCurrentPlayer(1);
+      setActivePlayers(newState.activePlayers);
+      setShowModal(false);
+      setWinner(null);
+      setHasSurrendered(false);
+      setExplodingCells(new Set());
     } else {
       // In multiplayer, request replay from all players
       socket.emit('requestReplay', { gameId, playerId });
@@ -276,7 +463,8 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setShowSurrenderConfirm(false);
       // Don't exit immediately - wait for gameOver event like other players
     } else {
-      // In single player mode, just exit
+      // In single player mode, just exit to menu
+      setShowSurrenderConfirm(false);
       onExit();
     }
   };
@@ -346,13 +534,13 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             </div>
           )}
           
-          {/* Surrender Button - Only in multiplayer */}
-          {mode === 'multi' && !showModal && !hasSurrendered && (
+          {/* Surrender Button - Both modes */}
+          {!showModal && !hasSurrendered && (
             <button
               onClick={handleSurrenderConfirm}
               className="surrender-button"
             >
-              🏳️ Surrender
+              🏳️ {mode === 'single' ? 'Exit Game' : 'Surrender'}
             </button>
           )}
         </div>
@@ -484,16 +672,18 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       {showSurrenderConfirm && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🏳️ Surrender Game</h2>
-            <p>Are you sure you want to surrender?</p>
-            <p style={{ fontSize: '14px', opacity: 0.8 }}>
-              {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
-            </p>
+            <h2>🏳️ {mode === 'single' ? 'Exit Game' : 'Surrender Game'}</h2>
+            <p>Are you sure you want to {mode === 'single' ? 'exit the game' : 'surrender'}?</p>
+            {mode === 'multi' && (
+              <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
+              </p>
+            )}
             <button 
               onClick={handleSurrender} 
               className="button button-exit"
             >
-              ✅ Yes, Surrender
+              ✅ Yes, {mode === 'single' ? 'Exit' : 'Surrender'}
             </button>
             <button 
               onClick={handleSurrenderCancel} 
