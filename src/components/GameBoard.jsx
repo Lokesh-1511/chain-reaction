@@ -137,8 +137,8 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         const sizeByWidth = (containerWidth - (col + 1) * gap) / col;
         const sizeByHeight = (availableHeight - (row + 1) * gap - margin) / row;
 
-        // Use the smaller of the two to ensure it fits both ways, with a max of 60
-        setCellSize(Math.floor(Math.min(sizeByWidth, sizeByHeight, 60)));
+        // Use the smaller of the two to ensure it fits both ways, with a min of 40 and max of 60
+        setCellSize(Math.floor(Math.min(Math.max(sizeByWidth, sizeByHeight, 40), 60)));
       }
     };
 

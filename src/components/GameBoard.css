@@ -24,11 +24,13 @@
 /* Game Header */
 .game-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .game-title {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: bold;
   background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
   background-size: 400% 400%;
@@ -36,33 +38,34 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: gradientShift 3s ease infinite;
-  margin: 0 0 20px 0;
+  margin: 0 0 15px 0;
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Multiplayer Info */
 .multiplayer-info {
   display: flex;
-  gap: 20px;
+  gap: 15px;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   flex-wrap: wrap;
 }
 
 .game-id-section, .player-id-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
-  border-radius: 25px;
+  padding: 6px 12px;
+  border-radius: 20px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
 }
 
 .info-label {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   opacity: 0.8;
   font-weight: 500;
 }
@@ -71,14 +74,14 @@
   font-family: 'Courier New', monospace;
   font-weight: bold;
   color: #ffd700;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .copy-button {
-  padding: 4px 8px;
-  font-size: 0.8rem;
+  padding: 3px 6px;
+  font-size: 0.7rem;
   border: none;
-  border-radius: 15px;
+  border-radius: 12px;
   background: linear-gradient(45deg, #667eea, #764ba2);
   color: white;
   cursor: pointer;
@@ -87,18 +90,18 @@
 }
 
 .copy-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .host-badge {
   background: linear-gradient(45deg, #ffd700, #ffed4e);
   color: #000;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
   font-weight: bold;
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 /* Current Player Section */
@@ -107,18 +110,19 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  max-width: 500px;
-  margin-bottom: 20px;
+  max-width: 600px;
+  margin-bottom: 15px;
+  gap: 10px;
 }
 
 .player-indicator {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .player-label {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 600;
   opacity: 0.9;
 }
@@ -126,25 +130,25 @@
 .player-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
-  border-radius: 25px;
+  padding: 6px 12px;
+  border-radius: 20px;
   backdrop-filter: blur(10px);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .player-color-indicator {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .player-name {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: bold;
   color: #ffffff;
 }
@@ -155,11 +159,15 @@
   justify-content: center;
   align-items: center;
   flex: 1;
+  min-height: 0; /* Allow flex item to shrink */
+  overflow: auto; /* Allow scrolling if needed */
 }
 
 .game-board {
   position: relative;
   transition: all 0.3s ease;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .game-board:hover {
@@ -169,21 +177,21 @@
 
 /* Surrender Button */
 .surrender-button {
-  padding: 10px 20px;
-  font-size: 1rem;
+  padding: 8px 16px;
+  font-size: 0.9rem;
   background: linear-gradient(45deg, #ff4757, #ff3838);
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: 20px;
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+  box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
 }
 
 .surrender-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 71, 87, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
 }
 
 .surrender-button:active {
@@ -212,20 +220,64 @@ body {
 @media (max-width: 768px) {
   .game-title {
     font-size: 2rem;
+    margin-bottom: 15px;
   }
   
   .multiplayer-info {
-    flex-direction: column;
     gap: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .game-id-section, .player-id-section {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border-radius: 15px;
+  }
+  
+  .info-label {
+    font-size: 0.7rem;
+  }
+  
+  .info-value {
+    font-size: 0.8rem;
+  }
+  
+  .copy-button {
+    padding: 2px 4px;
+    font-size: 0.6rem;
+  }
+  
+  .host-badge {
+    padding: 1px 4px;
+    font-size: 0.6rem;
   }
   
   .current-player-section {
-    flex-direction: column;
-    gap: 15px;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  
+  .player-label {
+    font-size: 1rem;
+  }
+  
+  .player-name {
+    font-size: 0.9rem;
+  }
+  
+  .player-info {
+    padding: 4px 8px;
+  }
+  
+  .surrender-button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
   }
   
   .game-container {
-    padding: 10px;
+    padding: 15px;
   }
   
   .game-board {
@@ -235,15 +287,61 @@ body {
 
 @media (max-width: 480px) {
   .game-title {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+  }
+  
+  .multiplayer-info {
+    flex-direction: row;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .game-id-section, .player-id-section {
+    flex-direction: column;
+    text-align: center;
+    gap: 2px;
+    padding: 3px 6px;
+  }
+  
+  .current-player-section {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .player-indicator {
+    gap: 8px;
   }
   
   .player-label {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
   
   .player-name {
-    font-size: 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .surrender-button {
+    padding: 5px 10px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Ultra-compact for very small screens */
+@media (max-width: 360px) {
+  .game-title {
+    font-size: 1.4rem;
+  }
+  
+  .multiplayer-info {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .game-id-section, .player-id-section {
+    width: 100%;
+    justify-content: center;
   }
 }
 
