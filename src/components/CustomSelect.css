@@ -1,0 +1,121 @@
+.custom-select {
+  position: relative;
+  width: 100%;
+  max-width: 150px;
+}
+
+.custom-select-trigger {
+  background: #3a3a50;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 30px 8px 12px;
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s ease;
+  user-select: none;
+  position: relative;
+}
+
+.custom-select-trigger:hover {
+  border-color: #4ecdc4;
+}
+
+.custom-select-arrow {
+  transition: transform 0.2s ease;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.custom-select-arrow.open {
+  transform: rotate(180deg);
+}
+
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #3a3a50;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  margin-top: 2px;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.custom-select-option {
+  padding: 10px 12px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-select-option:last-child {
+  border-bottom: none;
+}
+
+.custom-select-option:hover {
+  background: rgba(78, 205, 196, 0.2);
+}
+
+.custom-select-option.selected {
+  background: rgba(78, 205, 196, 0.3);
+  color: #4ecdc4;
+}
+
+/* Mobile specific styles */
+@media (max-width: 768px) {
+  .custom-select {
+    max-width: 150px;
+  }
+  
+  .custom-select-trigger {
+    font-size: 0.9rem;
+    padding: 6px 25px 6px 10px;
+  }
+  
+  .custom-select-option {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-select {
+    max-width: 130px;
+  }
+  
+  .custom-select-trigger {
+    font-size: 0.85rem;
+    padding: 6px 22px 6px 8px;
+  }
+  
+  .custom-select-option {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .custom-select {
+    max-width: 120px;
+  }
+  
+  .custom-select-trigger {
+    font-size: 0.8rem;
+    padding: 5px 20px 5px 6px;
+  }
+  
+  .custom-select-option {
+    padding: 5px 6px;
+    font-size: 0.75rem;
+  }
+}

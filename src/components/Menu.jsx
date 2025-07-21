@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import GameBoard from "./GameBoard";
 import { createGame, joinGame } from '../services/api';
 import socket from '../services/socket';
+import CustomSelect from "./CustomSelect";
 import "./Menu.css";
 
 // Generate a unique alphanumeric Game ID
@@ -28,6 +29,29 @@ function Menu() {
   const [joinGameId, setJoinGameId] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+
+  // Options for custom selects
+  const sizeOptions = [
+    { value: 'small', label: isMobile ? '9×6' : 'Small (9×6)' },
+    { value: 'medium', label: isMobile ? '12×8' : 'Medium (12×8)' },
+    { value: 'big', label: isMobile ? '15×10' : 'Big (15×10)' }
+  ];
+
+  const modeOptions = [
+    { value: 'single', label: isMobile ? '🏠 Local' : '🏠 Local Mode' },
+    { value: 'multi', label: isMobile ? '🌐 Online' : '🌐 Online Multiplayer' }
+  ];
+
+  // Handle window resize to detect mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 480);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSizeChange = (e) => {
     const newSize = e.target.value;
@@ -130,23 +154,22 @@ function Menu() {
       {page === "menu" ? (
         <div className="menu-card">
           {/* Game Title */}
-          <h1 className="menu-title">⚡ Chain Reaction ⚡</h1>
+          <h1 className="menu-title">Chain Reaction</h1>
           
           {/* Game Configuration Section */}
           <div className="config-section">
-            <h2 className="section-title">🎮 Game Setup</h2>
+            <h2 className="section-title">Game Setup</h2>
             
             {/* Board Size Selection */}
             <div className="config-item">
               <div className="config-label">
-                <span className="config-icon">🗂️</span>
                 <span>Board Size</span>
               </div>
-              <select className="game-select" value={size} onChange={handleSizeChange}>
-                <option value="small">Small (9×6)</option>
-                <option value="medium">Medium (12×8)</option>
-                <option value="big">Big (15×10)</option>
-              </select>
+              <CustomSelect
+                value={size}
+                options={sizeOptions}
+                onChange={handleSizeChange}
+              />
             </div>
 
             {/* Number of Players */}
@@ -171,10 +194,11 @@ function Menu() {
                 <span className="config-icon">🎯</span>
                 <span>Mode</span>
               </div>
-              <select className="game-select" value={mode} onChange={handleModeChange}>
-                <option value="single">🏠 Local Mode</option>
-                <option value="multi">🌐 Online Multiplayer</option>
-              </select>
+              <CustomSelect
+                value={mode}
+                options={modeOptions}
+                onChange={handleModeChange}
+              />
             </div>
           </div>
 
@@ -185,7 +209,7 @@ function Menu() {
               disabled={players < 2 || players > 8}
               className="start-button"
             >
-              🚀 Start Game
+              Start Game
             </button>
 
             {/* Multiplayer Section */}
@@ -209,7 +233,7 @@ function Menu() {
 
                   {/* Join Game Box */}
                   <div className="join-game-box">
-                    <h3 className="box-title">🚪 Join Existing Game</h3>
+                    <h3 className="box-title">Join Existing Game</h3>
                     <div className="join-input-group">
                       <input
                         className="join-input"
@@ -219,7 +243,7 @@ function Menu() {
                         onChange={e => setJoinGameId(e.target.value)}
                       />
                       <button onClick={handleJoinGame} className="join-button">
-                        🎮 Join
+                        Join
                       </button>
                     </div>
                     <p className="box-instruction">Enter a friend's Game ID to join their game!</p>

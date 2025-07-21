@@ -531,7 +531,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     <div className="game-container" ref={containerRef}>
       {/* Game Header */}
       <div className="game-header" ref={headerRef}>
-        <h1 className="game-title">⚡ Chain Reaction ⚡</h1>
+        <h1 className="game-title">Chain Reaction</h1>
         
         {/* Multiplayer Info - Only show in multiplayer mode */}
         {mode === 'multi' && (
@@ -549,7 +549,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             <div className="player-id-section">
               <span className="info-label">Player ID:</span>
               <span className="info-value">{playerId || 'N/A'}</span>
-              {isHost && <span className="host-badge">👑 Host</span>}
+              {isHost && <span className="host-badge">Host</span>}
             </div>
           </div>
         )}
@@ -576,7 +576,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               fontSize: '0.9rem',
               color: '#ffcccb'
             }}>
-              🏳️ You have surrendered
+              You have surrendered
             </div>
           )}
           
@@ -586,7 +586,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               onClick={handleSurrenderConfirm}
               className="surrender-button"
             >
-              🏳️ {mode === 'single' ? 'Exit Game' : 'Surrender'}
+              {mode === 'single' ? 'Exit Game' : 'Surrender'}
             </button>
           )}
         </div>
@@ -607,9 +607,8 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
             border: `3px solid ${getPlayerColor(currentPlayer)}`,
             margin: '10px',
-            width: `${displayCol * cellSize + (displayCol + 1) * 6 + 50}px`,
-            height: `${displayRow * cellSize + (displayRow + 1) * 6 + 50}px`,
-            boxSizing: 'border-box',
+            width: 'fit-content',
+            height: 'fit-content',
           }}
         >
         {cells && cells.map((rowArr, i) =>
@@ -636,7 +635,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
           <div className="modal-content">
             {hasSurrendered ? (
               <>
-                <h2>�️ You Surrendered</h2>
+                <h2>�You Surrendered</h2>
                 <p>{getPlayerName(winner)} wins!</p>
                 <p style={{ fontSize: '14px', opacity: 0.8 }}>
                   You can still participate in replay requests.
@@ -644,7 +643,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               </>
             ) : (
               <>
-                <h2>�🎉 Game Over! 🎉</h2>
+                <h2>🎉 Game Over! 🎉</h2>
                 <p>{getPlayerName(winner)} wins!</p>
               </>
             )}
@@ -652,7 +651,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               {mode === 'single' ? '🔄 Play Again' : '🔄 Request Replay'}
             </button>
             <button onClick={handleExit} className="button button-exit">
-              {mode === 'single' ? '🚪 Exit to Menu' : '🚪 Leave Game'}
+              {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
             </button>
           </div>
         </div>
@@ -710,10 +709,10 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       {showGameClosed && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🚪 Game Closed</h2>
+            <h2>Game Closed</h2>
             <p>{gameClosedMessage}</p>
             <button onClick={onExit} className="button button-exit">
-              🏠 Back to Menu
+              Back to Menu
             </button>
           </div>
         </div>
@@ -722,7 +721,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       {showSurrenderConfirm && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🏳️ {mode === 'single' ? 'Surrender Game' : 'Surrender Game'}</h2>
+            <h2>{mode === 'single' ? 'Surrender Game' : 'Surrender Game'}</h2>
             <p>Are you sure you want to {mode === 'single' ? 'surrender and be eliminated from the game' : 'surrender'}?</p>
             {mode === 'multi' && (
               <p style={{ fontSize: '14px', opacity: 0.8 }}>

@@ -8,12 +8,12 @@
   background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
   background-size: 400% 400%;
   animation: gradientShift 8s ease infinite;
-  padding: 15px;
+  padding: 10px;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
   overflow: auto; /* Allow scrolling when content is larger than viewport */
-  gap: 10px; /* Add gap between header and game board */
+  gap: 8px; /* Add gap between header and game board */
 }
 
 @keyframes gradientShift {
@@ -228,22 +228,32 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .game-container {
+    padding: 8px;
+    gap: 6px;
+  }
+  
+  .game-header {
+    margin-bottom: 10px;
+  }
+  
   .game-title {
-    font-size: 2rem;
-    margin-bottom: 15px;
+    font-size: 1.8rem;
+    margin-bottom: 10px;
   }
   
   .multiplayer-info {
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 8px;
     justify-content: center;
+    flex-wrap: wrap;
   }
   
   .game-id-section, .player-id-section {
     padding: 4px 8px;
     font-size: 0.8rem;
     border-radius: 15px;
-    min-width: 120px;
+    min-width: 100px;
     justify-content: center;
   }
   
@@ -268,16 +278,16 @@ body {
   .current-player-section {
     flex-direction: row;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px;
+    margin-bottom: 8px;
   }
   
   .player-label {
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
   
   .player-name {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
   }
   
   .player-info {
@@ -285,85 +295,130 @@ body {
   }
   
   .surrender-button {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-  }
-  
-  .game-container {
-    padding: 15px;
-  }
-  
-  .game-board {
-    padding: 15px !important;
+    padding: 5px 10px;
+    font-size: 0.75rem;
   }
   
   .game-board-container {
     padding: 5px;
     overflow: auto; /* Allow scrolling on mobile */
+    max-width: 100vw;
   }
   
   .game-board {
-    margin: 5px;
+    margin: 5px !important;
+    padding: 15px !important;
   }
 }
 
 @media (max-width: 480px) {
+  .game-container {
+    padding: 5px;
+    gap: 4px;
+  }
+  
+  .game-header {
+    margin-bottom: 8px;
+  }
+  
   .game-title {
-    font-size: 1.6rem;
-    margin-bottom: 10px;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
   }
   
   .multiplayer-info {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
   
   .game-id-section, .player-id-section {
     width: auto;
-    min-width: 200px;
+    min-width: 180px;
     justify-content: center;
+    font-size: 0.75rem;
   }
   
   .current-player-section {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
   
   .player-indicator {
-    gap: 8px;
+    gap: 6px;
   }
   
   .player-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   
   .player-name {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .surrender-button {
-    padding: 5px 10px;
+    padding: 4px 8px;
     font-size: 0.7rem;
+  }
+  
+  .game-board-container {
+    padding: 2px;
+    max-width: calc(100vw - 10px);
+  }
+  
+  .game-board {
+    margin: 2px !important;
+    padding: 10px !important;
   }
 }
 
 /* Ultra-compact for very small screens */
 @media (max-width: 360px) {
+  .game-container {
+    padding: 3px;
+    gap: 3px;
+  }
+  
   .game-title {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
+    margin-bottom: 6px;
   }
   
   .multiplayer-info {
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
   }
   
   .game-id-section, .player-id-section {
-    width: 100%;
-    max-width: 280px;
-    justify-content: center;
+    min-width: 160px;
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+  
+  .current-player-section {
+    gap: 4px;
+  }
+  
+  .player-label {
+    font-size: 0.8rem;
+  }
+  
+  .player-name {
+    font-size: 0.7rem;
+  }
+  
+  .surrender-button {
+    padding: 3px 6px;
+    font-size: 0.65rem;
+  }
+  
+  .game-board-container {
+    max-width: calc(100vw - 6px);
+  }
+  
+  .game-board {
+    padding: 8px !important;
   }
 }
 
