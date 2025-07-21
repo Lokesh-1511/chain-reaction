@@ -5,6 +5,16 @@ import { getGameState } from '../services/api';
 import './GameBoard.css';
 
 const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }) => {
+  // Helper function to get maximum tokens a cell can hold
+  const getMaxTokens = (row, col, totalRows, totalCols) => {
+    const isCorner = (row === 0 || row === totalRows - 1) && (col === 0 || col === totalCols - 1);
+    const isEdge = row === 0 || row === totalRows - 1 || col === 0 || col === totalCols - 1;
+    
+    if (isCorner) return 1; // Corner cells can hold 2 tokens before explosion (explode at 2)
+    if (isEdge) return 2; // Edge cells can hold 3 tokens before explosion (explode at 3)
+    return 3; // Center cells can hold 4 tokens before explosion (explode at 4)
+  };
+
   const [cells, setCells] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [activePlayers, setActivePlayers] = useState([]);
@@ -23,8 +33,95 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [hasSurrendered, setHasSurrendered] = useState(false);
+  const [explodingCells, setExplodingCells] = useState(new Set());
   const containerRef = useRef(null);
   const headerRef = useRef(null);
+
+  // Local game logic for singleplayer mode
+  const applyMoveLocally = (state, move, playerId) => {
+    if (state.status !== 'active') return state;
+    
+    // Create a deep copy of the state
+    const newState = JSON.parse(JSON.stringify(state));
+    
+    // Place orb
+    const cell = newState.grid[move.x][move.y];
+    if (cell.player === playerId) {
+      cell.value++;
+    } else if (cell.value === 0) {
+      cell.value = 1;
+      cell.player = playerId;
+    }
+    
+    // Process explosions
+    let explosionsOccurred;
+    do {
+      explosionsOccurred = false;
+      const explosionQueue = [];
+      for (let i = 0; i < newState.row; i++) {
+        for (let j = 0; j < newState.col; j++) {
+          if (newState.grid[i][j].value > newState.grid[i][j].max_value) {
+            explosionQueue.push({ i, j });
+          }
+        }
+      }
+      if (explosionQueue.length > 0) {
+        explosionsOccurred = true;
+        for (const { i, j } of explosionQueue) {
+          const explodingCell = newState.grid[i][j];
+          explodingCell.value = 0;
+          explodingCell.player = 0;
+          const directions = [
+            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+          ];
+          for (const { dx, dy } of directions) {
+            const nx = i + dx;
+            const ny = j + dy;
+            if (nx >= 0 && nx < newState.row && ny >= 0 && ny < newState.col) {
+              const neighbor = newState.grid[nx][ny];
+              neighbor.value++;
+              neighbor.player = playerId;
+            }
+          }
+        }
+      }
+    } while (explosionsOccurred);
+    
+    // Add to moved players if not already
+    if (!newState.playersMoved.includes(playerId)) {
+      newState.playersMoved.push(playerId);
+    }
+    
+    // Check for player elimination
+    const playersWithOrbs = new Set();
+    newState.grid.forEach(row => {
+      row.forEach(cell => {
+        if (cell.player !== 0) {
+          playersWithOrbs.add(cell.player);
+        }
+      });
+    });
+    const updatedActivePlayers = newState.activePlayers.filter(
+      p => playersWithOrbs.has(p) || !newState.playersMoved.includes(p)
+    );
+    newState.activePlayers = updatedActivePlayers;
+    
+    // Check win condition
+    if (newState.players > 1 && updatedActivePlayers.length === 1) {
+      newState.winner = updatedActivePlayers[0];
+      newState.status = 'finished';
+    } else if (updatedActivePlayers.length === 0) {
+      newState.status = 'finished';
+    } else {
+      // Advance to next player
+      const idx = updatedActivePlayers.indexOf(playerId);
+      newState.currentPlayer = updatedActivePlayers[(idx + 1) % updatedActivePlayers.length];
+    }
+    
+    return newState;
+  };
 
   useEffect(() => {
     const calculateCellSize = () => {
@@ -33,15 +130,16 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
         const headerHeight = headerRef.current.offsetHeight;
         const availableHeight = containerHeight - headerHeight;
         const containerWidth = containerRef.current.offsetWidth;
-        const gap = 5;
-        const margin = 40; // 20px top and bottom margin for the grid
+        const gap = 6; // Match the gap in the grid
+        const padding = 50; // 25px padding on each side
+        const margin = 120; // Increased margin to prevent overlap with header
 
         // Calculate cell size based on available container width and height
-        const sizeByWidth = (containerWidth - (col + 1) * gap) / col;
-        const sizeByHeight = (availableHeight - (row + 1) * gap - margin) / row;
+        const sizeByWidth = (containerWidth - padding - 40) / col - gap; // Account for padding and margins
+        const sizeByHeight = (availableHeight - padding - margin) / row - gap;
 
-        // Use the smaller of the two to ensure it fits both ways, with a max of 60
-        setCellSize(Math.floor(Math.min(sizeByWidth, sizeByHeight, 60)));
+        // Use the smaller of the two to ensure it fits both ways, with a min of 30 and max of 55
+        setCellSize(Math.floor(Math.min(Math.max(sizeByWidth, sizeByHeight, 30), 55)));
       }
     };
 
@@ -57,6 +155,42 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   useEffect(() => {
     if (!gameId) return;
+    
+    // For singleplayer, only initialize the game state locally
+    if (mode === 'single') {
+      const initialState = {
+        grid: Array(row).fill().map((_, i) => 
+          Array(col).fill().map((_, j) => {
+            const cell = { value: 0, player: 0, max_value: 0 };
+            // Set max value based on position
+            if ((i === 0 || i === row - 1) && (j === 0 || j === col - 1)) {
+              cell.max_value = 1; // Corner cells
+            } else if (i === 0 || i === row - 1 || j === 0 || j === col - 1) {
+              cell.max_value = 2; // Edge cells
+            } else {
+              cell.max_value = 3; // Inner cells
+            }
+            return cell;
+          })
+        ),
+        row: row,
+        col: col,
+        players: players,
+        currentPlayer: 1,
+        activePlayers: Array.from({ length: players }, (_, i) => i + 1),
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      setGameState(initialState);
+      setCells(initialState.grid);
+      setCurrentPlayer(1);
+      setActivePlayers(initialState.activePlayers);
+      return;
+    }
+    
+    // For multiplayer, handle server connections
     // Join game room
     socket.emit('joinGame', { gameId, playerId });
     // Fetch initial state
@@ -69,9 +203,38 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     // Listen for updates
     socket.on('gameUpdate', ({ state }) => {
       setGameState(state);
+      
+      // Check for explosions by detecting cells that reached their limits
+      const newExplodingCells = new Set();
+      if (cells.length > 0) {
+        state.grid.forEach((row, i) => {
+          row.forEach((cell, j) => {
+            const position = `${i}-${j}`;
+            const maxTokens = getMaxTokens(i, j, state.grid.length, row.length);
+            
+            // If cell was at capacity in previous state but now has fewer tokens, it exploded
+            if (cells[i] && cells[i][j]) {
+              const prevCell = cells[i][j];
+              if (prevCell.tokenCount >= maxTokens && cell.tokenCount < maxTokens) {
+                newExplodingCells.add(position);
+              }
+            }
+          });
+        });
+      }
+      
       setCells(state.grid);
       setCurrentPlayer(state.currentPlayer);
       setActivePlayers(state.activePlayers);
+      
+      // Trigger explosion animations
+      if (newExplodingCells.size > 0) {
+        setExplodingCells(newExplodingCells);
+        // Clear explosion animations after 1.2 seconds to match animation duration
+        setTimeout(() => {
+          setExplodingCells(new Set());
+        }, 1200);
+      }
     });
     socket.on('gameOver', ({ winner }) => {
       setWinner(winner);
@@ -106,6 +269,7 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setHasResponded(false);
       setWaitingForPlayers([]);
       setShowReplayWaiting(false);
+      setHasSurrendered(false); // Reset surrender flag for new game
     });
 
     socket.on('replayCancelled', () => {
@@ -150,16 +314,67 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       socket.off('playerLeft');
       socket.off('playerSurrendered');
     };
-  }, [gameId, playerId]);
+  }, [gameId, playerId, mode, row, col, players]);
 
   const handleCellClick = (x, y) => {
-    // In single player mode, any click is valid.
-    // In multiplayer, only the current player can make a move.
-    if (showModal || (mode === 'multi' && currentPlayer !== playerId)) return;
+    // Basic validation: no moves if modal is showing
+    if (showModal) return;
+    
+    // In local mode, only check for surrendered state in multiplayer
+    if (mode === 'multi' && hasSurrendered) return;
+    
+    // In single player mode, handle moves locally
+    if (mode === 'single') {
+      // Create a local copy of the current game state
+      const currentState = gameState || {
+        grid: cells,
+        row: displayRow,
+        col: displayCol,
+        players: players,
+        currentPlayer: currentPlayer,
+        activePlayers: activePlayers,
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      // Check if move is valid
+      if (x < 0 || x >= currentState.row || y < 0 || y >= currentState.col) return;
+      const cell = currentState.grid[x][y];
+      if (cell.value !== 0 && cell.player !== currentState.currentPlayer) return;
+      
+      // Apply move locally
+      const newState = applyMoveLocally(currentState, { x, y }, currentState.currentPlayer);
+      
+      // Update state
+      setGameState(newState);
+      setCells(newState.grid);
+      setCurrentPlayer(newState.currentPlayer);
+      setActivePlayers(newState.activePlayers);
+      
+      // Check for game over
+      if (newState.status === 'finished') {
+        setWinner(newState.winner);
+        setShowModal(true);
+      }
+      
+      return;
+    }
+    
+    // In multiplayer mode, only allow moves if it's the player's turn
+    // Exception: if only 1 active player, allow them to play
+    if (mode === 'multi') {
+      const isSingleActivePlayer = activePlayers && activePlayers.length === 1;
+      if (!isSingleActivePlayer && currentPlayer !== playerId) {
+        return; // Not this player's turn
+      }
+      socket.emit('makeMove', { gameId, playerId, move: { x, y } });
+    }
+  };
 
-    // In single player mode, we send the currentPlayer's ID with the move.
-    const movePlayerId = mode === 'single' ? currentPlayer : playerId;
-    socket.emit('makeMove', { gameId, playerId: movePlayerId, move: { x, y } });
+  const getPlayerColor = (player) => {
+    const colors = ['#ff4444', '#4444ff', '#44ff44', '#ffff44', '#ff44ff', '#ff8844', '#ff4488', '#88ff44'];
+    return colors[player - 1] || '#ffffff';
   };
 
   const getPlayerName = (player) => {
@@ -174,7 +389,41 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   const handleReplay = () => {
     if (mode === 'single') {
-      window.location.reload();
+      // For singleplayer, restart the game locally without reloading the page
+      const newState = {
+        grid: Array(displayRow).fill().map((_, i) => 
+          Array(displayCol).fill().map((_, j) => {
+            const cell = { value: 0, player: 0, max_value: 0 };
+            // Set max value based on position
+            if ((i === 0 || i === displayRow - 1) && (j === 0 || j === displayCol - 1)) {
+              cell.max_value = 1; // Corner cells
+            } else if (i === 0 || i === displayRow - 1 || j === 0 || j === displayCol - 1) {
+              cell.max_value = 2; // Edge cells
+            } else {
+              cell.max_value = 3; // Inner cells
+            }
+            return cell;
+          })
+        ),
+        row: displayRow,
+        col: displayCol,
+        players: players,
+        currentPlayer: 1,
+        activePlayers: Array.from({ length: players }, (_, i) => i + 1),
+        playersMoved: [],
+        winner: null,
+        status: 'active',
+      };
+      
+      // Reset all game state
+      setGameState(newState);
+      setCells(newState.grid);
+      setCurrentPlayer(1);
+      setActivePlayers(newState.activePlayers);
+      setShowModal(false);
+      setWinner(null);
+      setHasSurrendered(false);
+      setExplodingCells(new Set());
     } else {
       // In multiplayer, request replay from all players
       socket.emit('requestReplay', { gameId, playerId });
@@ -212,10 +461,57 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
 
   const handleSurrender = () => {
     if (mode === 'multi' && gameId && playerId) {
+      setHasSurrendered(true); // Mark that this player has surrendered
       socket.emit('surrenderGame', { gameId, playerId });
+      // Close the surrender confirmation modal
+      setShowSurrenderConfirm(false);
+      // Don't exit immediately - wait for gameOver event like other players
     } else {
-      // In single player mode, just exit
-      onExit();
+      // In local mode, eliminate the current player like they naturally lost
+      setShowSurrenderConfirm(false);
+      
+      // Remove all orbs belonging to the current player from the grid
+      const newGrid = cells.map(row => 
+        row.map(cell => 
+          cell.player === currentPlayer 
+            ? { value: 0, player: 0 } 
+            : cell
+        )
+      );
+      
+      // Remove current player from active players
+      const newActivePlayers = activePlayers.filter(p => p !== currentPlayer);
+      
+      // Determine next player
+      let nextPlayer;
+      if (newActivePlayers.length > 0) {
+        // Find the next player in the sequence
+        const currentIndex = activePlayers.indexOf(currentPlayer);
+        const remainingAfterCurrent = activePlayers.slice(currentIndex + 1).filter(p => p !== currentPlayer);
+        const remainingBeforeCurrent = activePlayers.slice(0, currentIndex).filter(p => p !== currentPlayer);
+        const nextInSequence = [...remainingAfterCurrent, ...remainingBeforeCurrent];
+        nextPlayer = nextInSequence.length > 0 ? nextInSequence[0] : newActivePlayers[0];
+      }
+      
+      // Update game state
+      const newState = {
+        ...gameState,
+        grid: newGrid,
+        activePlayers: newActivePlayers,
+        players: newActivePlayers.length,
+        currentPlayer: nextPlayer
+      };
+      
+      setGameState(newState);
+      setActivePlayers(newActivePlayers);
+      setCurrentPlayer(nextPlayer);
+      setCells(newGrid);
+      
+      // Check if only one player remains (game over)
+      if (newActivePlayers.length === 1) {
+        setWinner(newActivePlayers[0]);
+        setShowModal(true);
+      }
     }
   };
 
@@ -227,85 +523,94 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
     setShowSurrenderConfirm(false);
   };
 
-  const modalStyles = {
-    overlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    },
-    modal: {
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '10px',
-      textAlign: 'center',
-      maxWidth: '80%',
-      color: '#333'
-    },
-    button: {
-      margin: '10px',
-      padding: '10px 20px',
-      fontSize: '16px',
-      cursor: 'pointer',
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px'
-    }
-  };
-
   // Use backend state for row/col if available
   const displayRow = gameState?.row || row;
   const displayCol = gameState?.col || col;
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div ref={headerRef}>
-        <div style={{ color: 'yellow', marginBottom: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          Game ID: {gameId || 'N/A'}
-          <button
-            onClick={handleCopyGameId}
-            style={{
-              padding: "2px 8px",
-              fontSize: "14px",
-              borderRadius: "4px",
-              border: "none",
-              background: "#333",
-              color: "#fff",
-              cursor: "pointer"
-            }}
-          >
-            {copied ? "Copied!" : "Copy"}
-          </button>
-          | Player ID: {playerId || 'N/A'}
-        </div>
-        <h2>Chain Reaction Game</h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <p style={{ margin: 0 }}>Current Player: {getPlayerName(currentPlayer)}</p>
-          {mode === 'multi' && !showModal && (
+    <div className="game-container" ref={containerRef}>
+      {/* Game Header */}
+      <div className="game-header" ref={headerRef}>
+        <h1 className="game-title">Chain Reaction</h1>
+        
+        {/* Multiplayer Info - Only show in multiplayer mode */}
+        {mode === 'multi' && (
+          <div className="multiplayer-info">
+            <div className="game-id-section">
+              <span className="info-label">Game ID:</span>
+              <span className="info-value">{gameId || 'N/A'}</span>
+              <button
+                onClick={handleCopyGameId}
+                className="copy-button"
+              >
+                {copied ? "✓ Copied!" : "📋 Copy"}
+              </button>
+            </div>
+            <div className="player-id-section">
+              <span className="info-label">Player ID:</span>
+              <span className="info-value">{playerId || 'N/A'}</span>
+              {isHost && <span className="host-badge">Host</span>}
+            </div>
+          </div>
+        )}
+        
+        {/* Current Player Display */}
+        <div className="current-player-section">
+          <div className="player-indicator">
+            <span className="player-label">
+              {activePlayers && activePlayers.length === 1 ? "Playing:" : "Current Turn:"}
+            </span>
+            <div className="player-info">
+              <div className={`player-color-indicator player-${currentPlayer}`}></div>
+              <span className="player-name">{getPlayerName(currentPlayer)}</span>
+            </div>
+          </div>
+          
+          {/* Show surrender status */}
+          {hasSurrendered && (
+            <div style={{ 
+              backgroundColor: 'rgba(255, 71, 87, 0.2)', 
+              border: '1px solid rgba(255, 71, 87, 0.4)',
+              borderRadius: '15px',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              color: '#ffcccb'
+            }}>
+              You have surrendered
+            </div>
+          )}
+          
+          {/* Surrender Button - Both modes */}
+          {!showModal && !hasSurrendered && (
             <button
               onClick={handleSurrenderConfirm}
               className="surrender-button"
             >
-              Surrender
+              {mode === 'single' ? 'Exit Game' : 'Surrender'}
             </button>
           )}
         </div>
       </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
-        gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
-        gap: '5px',
-        margin: '20px auto',
-        justifyContent: 'center'
-      }}>
+
+      {/* Game Board */}
+      <div className="game-board-container">
+        <div 
+          className="game-board"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${displayCol}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${displayRow}, ${cellSize}px)`,
+            gap: '6px',
+            padding: '25px',
+            background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
+            borderRadius: '15px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: `3px solid ${getPlayerColor(currentPlayer)}`,
+            margin: '10px',
+            width: 'fit-content',
+            height: 'fit-content',
+          }}
+        >
         {cells && cells.map((rowArr, i) =>
           rowArr.map((cell, j) => (
             <GridCell
@@ -316,19 +621,36 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
               player={cell.player}
               onClick={handleCellClick}
               size={cellSize}
+              currentPlayer={currentPlayer}
+              isExploding={explodingCells.has(`${i}-${j}`)}
             />
           ))
         )}
+        </div>
       </div>
+      
+      {/* Modals and overlays */}
       {showModal && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Game Over!</h2>
-            <p>{getPlayerName(winner)} wins!</p>
-            <button onClick={handleReplay} style={modalStyles.button}>
-              {mode === 'single' ? 'Replay' : 'Request Replay'}
+        <div className="modal-overlay">
+          <div className="modal-content">
+            {hasSurrendered ? (
+              <>
+                <h2>�You Surrendered</h2>
+                <p>{getPlayerName(winner)} wins!</p>
+                <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                  You can still participate in replay requests.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>🎉 Game Over! 🎉</h2>
+                <p>{getPlayerName(winner)} wins!</p>
+              </>
+            )}
+            <button onClick={handleReplay} className="button button-replay">
+              {mode === 'single' ? '🔄 Play Again' : '🔄 Request Replay'}
             </button>
-            <button onClick={handleExit} style={{ ...modalStyles.button, backgroundColor: '#f44336' }}>
+            <button onClick={handleExit} className="button button-exit">
               {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
             </button>
           </div>
@@ -336,31 +658,31 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       )}
       
       {replayRequested && !hasResponded && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Replay Request</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>🔄 Replay Request</h2>
             <p>{replayMessage}</p>
             <p>Do you want to play again?</p>
             <button 
               onClick={() => handleReplayResponse(true)} 
-              style={{ ...modalStyles.button, backgroundColor: '#4CAF50' }}
+              className="button button-replay"
             >
-              Yes, Play Again
+              ✅ Yes, Play Again
             </button>
             <button 
               onClick={() => handleReplayResponse(false)} 
-              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+              className="button button-exit"
             >
-              No, I'll Leave
+              ❌ No, I'll Leave
             </button>
           </div>
         </div>
       )}
       
       {(replayRequested && hasResponded) || showReplayWaiting ? (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Waiting for Other Players</h2>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>⏳ Waiting for Other Players</h2>
             <p>
               {showReplayWaiting 
                 ? "Waiting for all players to respond to your replay request..." 
@@ -369,19 +691,27 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
             {waitingForPlayers.length > 0 && (
               <p>Still waiting for: {waitingForPlayers.join(', ')}</p>
             )}
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</div>
+            <div style={{ margin: '20px 0' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '4px solid rgba(255,255,255,0.3)', 
+                borderTop: '4px solid #ffd700', 
+                borderRadius: '50%', 
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto'
+              }}></div>
             </div>
           </div>
         </div>
       ) : null}
 
       {showGameClosed && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h2>Game Closed</h2>
             <p>{gameClosedMessage}</p>
-            <button onClick={onExit} style={modalStyles.button}>
+            <button onClick={onExit} className="button button-exit">
               Back to Menu
             </button>
           </div>
@@ -389,24 +719,32 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       )}
 
       {showSurrenderConfirm && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <h2>Surrender Game</h2>
-            <p>Are you sure you want to surrender?</p>
-            <p style={{ fontSize: '14px', color: '#666' }}>
-              {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
-            </p>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{mode === 'single' ? 'Surrender Game' : 'Surrender Game'}</h2>
+            <p>Are you sure you want to {mode === 'single' ? 'surrender and be eliminated from the game' : 'surrender'}?</p>
+            {mode === 'multi' && (
+              <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
+              </p>
+            )}
+            {mode === 'single' && (
+              <p style={{ fontSize: '14px', opacity: 0.8 }}>
+                You will be eliminated and the remaining players will continue playing locally.
+              </p>
+            )}
             <button 
               onClick={handleSurrender} 
-              style={{ ...modalStyles.button, backgroundColor: '#f44336' }}
+              className="button button-exit"
             >
-              Yes, Surrender
+              ✅ Yes, Surrender
             </button>
             <button 
               onClick={handleSurrenderCancel} 
-              style={{ ...modalStyles.button, backgroundColor: '#666' }}
+              className="button"
+              style={{ background: 'linear-gradient(45deg, #666, #999)' }}
             >
-              Cancel
+              ❌ Cancel
             </button>
           </div>
         </div>

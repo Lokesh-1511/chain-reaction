@@ -40,6 +40,18 @@ function createInitialState(row = 9, col = 6, players = 2) {
   };
 }
 
+function isValidMove(state, player, x, y) {
+  // Check if coordinates are within bounds
+  if (x < 0 || x >= state.row || y < 0 || y >= state.col) {
+    return false;
+  }
+  
+  const cell = state.grid[x][y];
+  
+  // Can place orb if cell is empty OR if cell belongs to the current player
+  return cell.value === 0 || cell.player === player;
+}
+
 function placeOrb(state, player, x, y) {
   const cell = state.grid[x][y];
   if (cell.player === player) {
@@ -119,6 +131,12 @@ function checkWin(state) {
 function applyMove(state, move, playerId) {
   if (state.status !== 'active') return state;
   if (state.currentPlayer !== playerId) return state;
+  
+  // Check if the move is valid before processing
+  if (!isValidMove(state, playerId, move.x, move.y)) {
+    return state; // Return unchanged state for invalid moves
+  }
+  
   processMoveWithExplosions(state, playerId, move.x, move.y);
   if (!state.playersMoved.includes(playerId)) {
     state.playersMoved.push(playerId);
@@ -126,10 +144,17 @@ function applyMove(state, move, playerId) {
   // Advance to next player
   const updatedPlayers = checkPlayerElimination(state);
   state.activePlayers = updatedPlayers;
-  if (updatedPlayers.length === 1) {
+  
+  // Only end the game if we have multiple players configured but only 1 remains
+  // Single-player games (state.players === 1) should continue indefinitely
+  if (state.players > 1 && updatedPlayers.length === 1) {
     state.winner = updatedPlayers[0];
     state.status = 'finished';
+  } else if (updatedPlayers.length === 0) {
+    // No players left - game over
+    state.status = 'finished';
   } else {
+    // Continue the game - advance to next player
     const idx = updatedPlayers.indexOf(playerId);
     state.currentPlayer = updatedPlayers[(idx + 1) % updatedPlayers.length];
   }
@@ -140,4 +165,5 @@ module.exports = {
   createInitialState,
   applyMove,
   checkWin,
+  isValidMove,
 };
