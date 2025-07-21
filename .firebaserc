@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "chain-reaction-8bb4b"
+  },
+  "targets": {
+    "chain-reaction-8bb4b": {
+      "hosting": {
+        "default": [
+          "chain-reaction-15loki"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
