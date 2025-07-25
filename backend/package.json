@@ -9,6 +9,8 @@
     "socket.io": "^4.7.5"
   },
   "scripts": {
+    "start": "node server.js",
+    "build": "echo 'No build needed for backend'",
     "dev": "node server.js"
   }
 }
