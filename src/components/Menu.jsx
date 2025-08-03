@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import GameBoard from "./GameBoard";
 import { createGame, joinGame } from '../services/api';
-import socket from '../services/socket';
+import socket, { createRoom, joinRoom } from '../services/socket';
+import { getCurrentUsername } from './UserProfile';
 import CustomSelect from "./CustomSelect";
 import "./Menu.css";
 
@@ -30,6 +31,9 @@ function Menu() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  const [roomCode, setRoomCode] = useState("");
+  const [playerUsernames, setPlayerUsernames] = useState({});
+  const [waitingForPlayers, setWaitingForPlayers] = useState(false);
 
   // Options for custom selects
   const sizeOptions = [
@@ -90,6 +94,48 @@ function Menu() {
     setError("");
   };
 
+  // Socket event handlers for room-based multiplayer
+  useEffect(() => {
+    // Handle room creation
+    socket.on('roomCreated', ({ roomCode, playerId, username, isHost, game }) => {
+      setRoomCode(roomCode);
+      setGameId(roomCode);
+      setPlayerId(playerId);
+      setIsHost(isHost);
+      setPlayerUsernames({ [playerId]: username });
+      setWaitingForPlayers(true);
+      setPage("game");
+    });
+
+    // Handle successful room joining
+    socket.on('roomJoined', ({ roomCode, playerId, username, isHost, game }) => {
+      setRoomCode(roomCode);
+      setGameId(roomCode);
+      setPlayerId(playerId);
+      setIsHost(isHost);
+      setWaitingForPlayers(game.status === 'waiting');
+      setPage("game");
+    });
+
+    // Handle player joining room
+    socket.on('playerJoined', ({ roomCode, playerId, username, playerUsernames, game }) => {
+      setPlayerUsernames(playerUsernames);
+      setWaitingForPlayers(game.status === 'waiting');
+    });
+
+    // Handle errors
+    socket.on('error', ({ message }) => {
+      setError(message);
+    });
+
+    return () => {
+      socket.off('roomCreated');
+      socket.off('roomJoined');
+      socket.off('playerJoined');
+      socket.off('error');
+    };
+  }, []);
+
   const handleStartGame = async () => {
     setError("");
     if (players < 2 || players > 8) {
@@ -98,31 +144,33 @@ function Menu() {
     }
 
     try {
-      // For multiplayer, pass the pre-generated gameId. For single player, the backend will assign one.
-      const gameData = {
-        mode,
-        row,
-        col,
-        players,
-        gameId: mode === 'multi' ? gameId : null,
-      };
+      if (mode === 'single') {
+        // For single player, use the old API system
+        const gameData = {
+          mode,
+          row,
+          col,
+          players,
+          gameId: null,
+        };
 
-      const createdGame = await createGame(gameData);
+        const createdGame = await createGame(gameData);
 
-      if (createdGame.error) {
-        setError(createdGame.error);
-        // If the ID already existed, generate a new one for the user to try again.
-        if (mode === 'multi') {
-          setGameId(generateGameId());
+        if (createdGame.error) {
+          setError(createdGame.error);
+          return;
         }
-        return;
-      }
 
-      setGameId(createdGame.id);
-      const join = await joinGame(createdGame.id);
-      setPlayerId(join.playerId);
-      setIsHost(join.isHost || false);
-      setPage("game");
+        setGameId(createdGame.id);
+        const username = getCurrentUsername();
+        const join = await joinGame(createdGame.id, username);
+        setPlayerId(join.playerId);
+        setIsHost(join.isHost || false);
+        setPage("game");
+      } else {
+        // For multiplayer, use room-based system
+        createRoom();
+      }
     } catch (e) {
       setError("Server error. Could not start game.");
     }
@@ -131,21 +179,14 @@ function Menu() {
   const handleJoinGame = async () => {
     setError("");
     if (!joinGameId) {
-      setError("Please enter a game ID.");
+      setError("Please enter a room code.");
       return;
     }
     try {
-      const join = await joinGame(joinGameId);
-      if (join.error) {
-        setError(join.error);
-        return;
-      }
-      setGameId(joinGameId);
-      setPlayerId(join.playerId);
-      setIsHost(join.isHost || false);
-      setPage("game");
+      // Use room-based joining for multiplayer
+      joinRoom(joinGameId);
     } catch (e) {
-      setError("Failed to join game. Check the ID and try again.");
+      setError("Could not join room.");
     }
   };
 
@@ -262,7 +303,19 @@ function Menu() {
         </div>
       ) : (
         <>
-          <GameBoard row={row} col={col} players={players} onExit={handleExit} gameId={gameId} playerId={playerId} mode={mode} isHost={isHost} />
+          <GameBoard 
+            row={row} 
+            col={col} 
+            players={players} 
+            onExit={handleExit} 
+            gameId={gameId} 
+            playerId={playerId} 
+            mode={mode} 
+            isHost={isHost}
+            roomCode={roomCode}
+            playerUsernames={playerUsernames}
+            waitingForPlayers={waitingForPlayers}
+          />
           {mode === 'multi' && (
             <div className="game-info-footer">
               Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'} | {isHost ? 'Host' : 'Player'}

@@ -12,10 +12,11 @@ export async function createGame({ mode, row, col, players, gameId }) {
   return res.json();
 }
 
-export async function joinGame(gameId) {
+export async function joinGame(gameId, username) {
   const res = await fetch(`${API_URL}/game/${gameId}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username })
   });
   return res.json();
 }
