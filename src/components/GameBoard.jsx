@@ -38,7 +38,6 @@ const GameBoard = ({
   const [replayRequested, setReplayRequested] = useState(false);
   const [replayRequestedBy, setReplayRequestedBy] = useState(null);
   const [replayMessage, setReplayMessage] = useState('');
-  const [waitingForPlayers, setWaitingForPlayers] = useState([]);
   const [hasResponded, setHasResponded] = useState(false);
   const [showReplayWaiting, setShowReplayWaiting] = useState(false);
   const [showGameClosed, setShowGameClosed] = useState(false);
@@ -47,8 +46,17 @@ const GameBoard = ({
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
   const [hasSurrendered, setHasSurrendered] = useState(false);
   const [explodingCells, setExplodingCells] = useState(new Set());
+  const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const containerRef = useRef(null);
   const headerRef = useRef(null);
+
+  // Helper function to get player display name
+  const getPlayerDisplayName = (playerId) => {
+    if (mode === 'multi' && gamePlayerUsernames[playerId]) {
+      return gamePlayerUsernames[playerId];
+    }
+    return `Player ${playerId}`;
+  };
 
   // Local game logic for singleplayer mode
   const applyMoveLocally = (state, move, playerId) => {
@@ -218,7 +226,7 @@ const GameBoard = ({
       
       // Update player usernames if provided (for room-based games)
       if (updateUsernames) {
-        setPlayerUsernames(updateUsernames);
+        setGamePlayerUsernames(updateUsernames);
       }
       
       // Check for explosions by detecting cells that reached their limits
@@ -253,7 +261,10 @@ const GameBoard = ({
         }, 1200);
       }
     });
-    socket.on('gameOver', ({ winner }) => {
+    socket.on('gameOver', ({ winner, winnerUsername, playerUsernames: updateUsernames }) => {
+      if (updateUsernames) {
+        setGamePlayerUsernames(updateUsernames);
+      }
       setWinner(winner);
       setShowModal(true);
     });
@@ -385,7 +396,13 @@ const GameBoard = ({
       if (!isSingleActivePlayer && currentPlayer !== playerId) {
         return; // Not this player's turn
       }
-      socket.emit('makeMove', { gameId, playerId, move: { x, y } });
+      
+      // Use room-based move if roomCode is available, otherwise use old game-based system
+      if (roomCode) {
+        socket.emit('makeMove', { roomCode, move: { x, y } });
+      } else {
+        socket.emit('makeMove', { gameId, playerId, move: { x, y } });
+      }
     }
   };
 
@@ -546,6 +563,44 @@ const GameBoard = ({
 
   return (
     <div className="game-container" ref={containerRef}>
+      {/* Waiting Screen for Multiplayer */}
+      {mode === 'multi' && waitingForPlayers && (
+        <div className="waiting-overlay">
+          <div className="waiting-content">
+            <h2>🎮 Waiting for Players</h2>
+            <div className="room-info">
+              <p><strong>Room Code:</strong> {roomCode || gameId}</p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(roomCode || gameId);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1200);
+                }}
+                className="copy-room-button"
+              >
+                {copied ? '✓ Copied!' : '📋 Copy Room Code'}
+              </button>
+            </div>
+            
+            <div className="players-joined">
+              <h3>Players Joined:</h3>
+              {Object.entries(gamePlayerUsernames).map(([id, username]) => (
+                <div key={id} className="joined-player">
+                  <div className={`player-color-indicator player-${id}`}></div>
+                  <span>{username}</span>
+                  {id == playerId && <span className="you-label">(You)</span>}
+                </div>
+              ))}
+            </div>
+            
+            <div className="waiting-animation">
+              <div className="spinner"></div>
+              <p>Share the room code with friends to start playing!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Game Header */}
       <div className="game-header" ref={headerRef}>
         <h1 className="game-title">Chain Reaction</h1>
@@ -579,7 +634,7 @@ const GameBoard = ({
             </span>
             <div className="player-info">
               <div className={`player-color-indicator player-${currentPlayer}`}></div>
-              <span className="player-name">{getPlayerName(currentPlayer)}</span>
+              <span className="player-name">{getPlayerDisplayName(currentPlayer)}</span>
             </div>
           </div>
           
@@ -652,8 +707,8 @@ const GameBoard = ({
           <div className="modal-content">
             {hasSurrendered ? (
               <>
-                <h2>�You Surrendered</h2>
-                <p>{getPlayerName(winner)} wins!</p>
+                <h2>🏳️ You Surrendered</h2>
+                <p>{getPlayerDisplayName(winner)} wins!</p>
                 <p style={{ fontSize: '14px', opacity: 0.8 }}>
                   You can still participate in replay requests.
                 </p>
@@ -661,7 +716,7 @@ const GameBoard = ({
             ) : (
               <>
                 <h2>🎉 Game Over! 🎉</h2>
-                <p>{getPlayerName(winner)} wins!</p>
+                <p>{getPlayerDisplayName(winner)} wins!</p>
               </>
             )}
             <button onClick={handleReplay} className="button button-replay">
