@@ -4,7 +4,19 @@ import socket from '../services/socket';
 import { getGameState } from '../services/api';
 import './GameBoard.css';
 
-const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }) => {
+const GameBoard = ({ 
+  row, 
+  col, 
+  players, 
+  onExit, 
+  gameId, 
+  playerId, 
+  mode, 
+  isHost, 
+  roomCode, 
+  playerUsernames = {}, 
+  waitingForPlayers = false 
+}) => {
   // Helper function to get maximum tokens a cell can hold
   const getMaxTokens = (row, col, totalRows, totalCols) => {
     const isCorner = (row === 0 || row === totalRows - 1) && (col === 0 || col === totalCols - 1);
@@ -201,8 +213,13 @@ const GameBoard = ({ row, col, players, onExit, gameId, playerId, mode, isHost }
       setActivePlayers(game.state.activePlayers);
     });
     // Listen for updates
-    socket.on('gameUpdate', ({ state }) => {
+    socket.on('gameUpdate', ({ state, roomCode: updateRoomCode, playerUsernames: updateUsernames }) => {
       setGameState(state);
+      
+      // Update player usernames if provided (for room-based games)
+      if (updateUsernames) {
+        setPlayerUsernames(updateUsernames);
+      }
       
       // Check for explosions by detecting cells that reached their limits
       const newExplodingCells = new Set();
