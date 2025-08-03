@@ -27,6 +27,7 @@ function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
     id: gameId,
     mode, // 'single' or 'multi'
     players: [],
+    playerUsernames: {}, // Track player usernames
     state: createInitialState(row, col, players),
     currentPlayer: 1,
     status: 'waiting', // 'waiting', 'active', 'finished'
@@ -86,13 +87,19 @@ app.post('/api/game', (req, res) => {
 
 // REST endpoint: Join a game
 app.post('/api/game/:id/join', (req, res) => {
-  console.log(`POST /api/game/${req.params.id}/join called`);
+  console.log(`POST /api/game/${req.params.id}/join called`, req.body);
+  const { username } = req.body;
   const game = games[req.params.id];
   if (!game) return res.status(404).json({ error: 'Game not found' });
   if (game.players.length >= game.state.players) return res.status(400).json({ error: 'Game full' });
   const playerId = game.players.length + 1;
   game.players.push(playerId);
   game.activePlayers.add(playerId);
+  
+  // Store username for this player
+  if (username) {
+    game.playerUsernames[playerId] = username;
+  }
   
   // Set the first player as the host
   if (!game.hostPlayerId) {
@@ -352,6 +359,101 @@ io.on('connection', (socket) => {
       
       // Update the game state for remaining players
       io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
+    }
+  });
+
+  // Room-based multiplayer handlers
+  socket.on('createRoom', ({ username }) => {
+    const game = createGame({ mode: 'multi', players: 2 });
+    const roomCode = game.id.toString();
+    const playerId = 1;
+    
+    game.players.push(playerId);
+    game.activePlayers.add(playerId);
+    game.hostPlayerId = playerId;
+    game.playerUsernames[playerId] = username || 'Player 1';
+    
+    socket.join(`room_${roomCode}`);
+    socket.roomCode = roomCode;
+    socket.playerId = playerId;
+    socket.username = username;
+    
+    socket.emit('roomCreated', { 
+      roomCode, 
+      playerId, 
+      username,
+      isHost: true,
+      game 
+    });
+  });
+
+  socket.on('joinRoom', ({ roomCode, username }) => {
+    const game = games[roomCode];
+    if (!game) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    if (game.players.length >= game.state.players) {
+      socket.emit('error', { message: 'Room is full' });
+      return;
+    }
+    
+    const playerId = game.players.length + 1;
+    game.players.push(playerId);
+    game.activePlayers.add(playerId);
+    game.playerUsernames[playerId] = username || `Player ${playerId}`;
+    
+    socket.join(`room_${roomCode}`);
+    socket.roomCode = roomCode;
+    socket.playerId = playerId;
+    socket.username = username;
+    
+    // Start the game if we have enough players
+    if (game.players.length === game.state.players) {
+      game.status = 'active';
+    }
+    
+    // Notify all players in the room
+    io.to(`room_${roomCode}`).emit('playerJoined', {
+      roomCode,
+      playerId,
+      username,
+      playerUsernames: game.playerUsernames,
+      game
+    });
+    
+    socket.emit('roomJoined', { 
+      roomCode, 
+      playerId, 
+      username,
+      isHost: false,
+      game 
+    });
+  });
+
+  socket.on('makeMove', ({ roomCode, move, username }) => {
+    const game = games[roomCode];
+    if (!game || game.status !== 'active') return;
+    
+    const playerId = socket.playerId;
+    if (!playerId || game.state.currentPlayer !== playerId) return;
+    
+    game.state = applyMove(game.state, move, playerId);
+    
+    io.to(`room_${roomCode}`).emit('gameUpdate', { 
+      roomCode, 
+      state: game.state,
+      playerUsernames: game.playerUsernames
+    });
+    
+    if (game.state.status === 'finished') {
+      const winnerUsername = game.playerUsernames[game.state.winner] || `Player ${game.state.winner}`;
+      io.to(`room_${roomCode}`).emit('gameOver', { 
+        winner: game.state.winner,
+        winnerUsername,
+        playerUsernames: game.playerUsernames
+      });
     }
   });
 });

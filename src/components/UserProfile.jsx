@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -7,30 +7,86 @@ import {
   onAuthStateChanged,
   updateProfile 
 } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import './UserProfile.css';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: ''
   });
+  const [profileFormData, setProfileFormData] = useState({
+    username: '',
+    bio: '',
+    avatar: ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Load user profile from Firestore
+        await loadUserProfile(currentUser.uid);
+      } else {
+        setUserProfile(null);
+      }
     });
     return () => unsubscribe();
   }, []);
 
+  const loadUserProfile = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        const profileData = userDoc.data();
+        setUserProfile(profileData);
+        setProfileFormData({
+          username: profileData.username || '',
+          bio: profileData.bio || '',
+          avatar: profileData.avatar || ''
+        });
+      } else {
+        // Create default profile if it doesn't exist
+        const defaultProfile = {
+          username: user?.displayName || '',
+          bio: '',
+          avatar: '',
+          gamesPlayed: 0,
+          gamesWon: 0,
+          joinedDate: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'users', uid), defaultProfile);
+        setUserProfile(defaultProfile);
+        setProfileFormData({
+          username: defaultProfile.username,
+          bio: defaultProfile.bio,
+          avatar: defaultProfile.avatar
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleProfileInputChange = (e) => {
+    setProfileFormData({
+      ...profileFormData,
       [e.target.name]: e.target.value
     });
   };
@@ -52,10 +108,21 @@ const UserProfile = () => {
           formData.password
         );
         
-        // Update profile with username
+        // Update profile with username and create Firestore document
         await updateProfile(userCredential.user, {
           displayName: formData.username
         });
+
+        // Create user profile in Firestore
+        const profileData = {
+          username: formData.username,
+          bio: '',
+          avatar: '',
+          gamesPlayed: 0,
+          gamesWon: 0,
+          joinedDate: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'users', userCredential.user.uid), profileData);
       }
       
       setShowModal(false);
@@ -70,9 +137,47 @@ const UserProfile = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setShowDashboard(false);
+      setShowModal(false);
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Update Firebase Auth profile
+      await updateProfile(user, {
+        displayName: profileFormData.username
+      });
+
+      // Update Firestore document
+      await updateDoc(doc(db, 'users', user.uid), {
+        username: profileFormData.username,
+        bio: profileFormData.bio,
+        avatar: profileFormData.avatar
+      });
+
+      // Reload profile
+      await loadUserProfile(user.uid);
+      setIsEditing(false);
+    } catch (error) {
+      setError('Failed to update profile: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getUsername = () => {
+    return userProfile?.username || user?.displayName || 'Player';
+  };
+
+  const getWinRate = () => {
+    if (!userProfile || userProfile.gamesPlayed === 0) return 0;
+    return Math.round((userProfile.gamesWon / userProfile.gamesPlayed) * 100);
   };
 
   const toggleMode = () => {
@@ -85,25 +190,112 @@ const UserProfile = () => {
     <div className="user-profile">
       {user ? (
         <div className="profile-menu">
-          <div className="profile-icon" onClick={() => setShowModal(true)}>
+          <div className="profile-icon" onClick={() => setShowDashboard(true)}>
             <div className="avatar">
-              {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+              {getUsername().charAt(0).toUpperCase()}
             </div>
           </div>
           
-          {showModal && (
-            <div className="modal-overlay" onClick={() => setShowModal(false)}>
-              <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+          {showDashboard && (
+            <div className="modal-overlay" onClick={() => setShowDashboard(false)}>
+              <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                  <h3>Profile</h3>
-                  <button className="close-btn" onClick={() => setShowModal(false)}>×</button>
+                  <h2>Profile Dashboard</h2>
+                  <button className="close-btn" onClick={() => setShowDashboard(false)}>×</button>
                 </div>
-                <div className="profile-info">
-                  <p><strong>Username:</strong> {user.displayName || 'Not set'}</p>
-                  <p><strong>Email:</strong> {user.email}</p>
-                  <button className="logout-btn" onClick={handleLogout}>
-                    Logout
-                  </button>
+                
+                <div className="dashboard-content">
+                  <div className="profile-section">
+                    <div className="profile-avatar-large">
+                      {getUsername().charAt(0).toUpperCase()}
+                    </div>
+                    
+                    <div className="profile-details">
+                      {!isEditing ? (
+                        <>
+                          <h3>{getUsername()}</h3>
+                          <p className="email">{user.email}</p>
+                          <p className="bio">{userProfile?.bio || 'No bio added yet'}</p>
+                          <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                            Edit Profile
+                          </button>
+                        </>
+                      ) : (
+                        <div className="edit-form">
+                          <div className="form-group">
+                            <label>Username:</label>
+                            <input
+                              type="text"
+                              name="username"
+                              value={profileFormData.username}
+                              onChange={handleProfileInputChange}
+                              placeholder="Enter username"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Bio:</label>
+                            <textarea
+                              name="bio"
+                              value={profileFormData.bio}
+                              onChange={handleProfileInputChange}
+                              placeholder="Tell us about yourself..."
+                              rows="3"
+                            />
+                          </div>
+                          <div className="edit-actions">
+                            <button 
+                              className="save-btn" 
+                              onClick={handleUpdateProfile}
+                              disabled={loading}
+                            >
+                              {loading ? 'Saving...' : 'Save'}
+                            </button>
+                            <button 
+                              className="cancel-btn" 
+                              onClick={() => setIsEditing(false)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="stats-section">
+                    <h3>Game Statistics</h3>
+                    <div className="stats-grid">
+                      <div className="stat-card">
+                        <div className="stat-number">{userProfile?.gamesPlayed || 0}</div>
+                        <div className="stat-label">Games Played</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-number">{userProfile?.gamesWon || 0}</div>
+                        <div className="stat-label">Games Won</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-number">{getWinRate()}%</div>
+                        <div className="stat-label">Win Rate</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-number">
+                          {userProfile?.joinedDate ? 
+                            new Date(userProfile.joinedDate).toLocaleDateString() : 
+                            'Unknown'
+                          }
+                        </div>
+                        <div className="stat-label">Member Since</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {error && <div className="error-message">{error}</div>}
+                  
+                  <div className="dashboard-actions">
+                    <button className="logout-btn" onClick={handleLogout}>
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -187,6 +379,33 @@ const UserProfile = () => {
       )}
     </div>
   );
+};
+
+// Export function to get current user's username for multiplayer
+export const getCurrentUsername = () => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return 'Guest';
+  
+  return currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
+};
+
+// Export function to update game stats
+export const updateGameStats = async (won = false) => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  try {
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    if (userDoc.exists()) {
+      const currentStats = userDoc.data();
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        gamesPlayed: (currentStats.gamesPlayed || 0) + 1,
+        gamesWon: won ? (currentStats.gamesWon || 0) + 1 : (currentStats.gamesWon || 0)
+      });
+    }
+  } catch (error) {
+    console.error('Error updating game stats:', error);
+  }
 };
 
 export default UserProfile;
