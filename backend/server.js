@@ -6,14 +6,34 @@ const { createInitialState, applyMove, checkWin } = require('./gameLogic');
 
 const app = express();
 const server = http.createServer(app);
+
+// Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:3000', 
+      'https://chain-reaction-8bb4b.web.app',
+      'https://chain-reaction-8bb4b.firebaseapp.com'
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
-app.use(cors());
+// Configure CORS for Express
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://chain-reaction-8bb4b.web.app',
+    'https://chain-reaction-8bb4b.firebaseapp.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // In-memory store for games
@@ -70,6 +90,18 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    server: 'Chain Reaction Backend'
+  });
+});
+
+// CORS preflight handler
+app.options('*', cors());
 
 // REST endpoint: Create a new game
 app.post('/api/game', (req, res) => {
