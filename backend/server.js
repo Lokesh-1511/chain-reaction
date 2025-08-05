@@ -10,31 +10,47 @@ const server = http.createServer(app);
 // Configure CORS for Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000', 
-      'https://chain-reaction-8bb4b.web.app',
-      'https://chain-reaction-8bb4b.firebaseapp.com'
-    ],
+    origin: "*", // Allow all origins for debugging
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: false
   }
 });
 
 // Configure CORS for Express
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://chain-reaction-8bb4b.web.app',
-    'https://chain-reaction-8bb4b.firebaseapp.com'
-  ],
-  credentials: true,
+  origin: "*", // Allow all origins for debugging
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.get('Origin') || 'none'}`);
+  next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'chain-reaction-backend',
+    version: '1.0.0'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Chain Reaction Backend Server', 
+    status: 'running',
+    endpoints: ['/api/game', '/health'],
+    timestamp: new Date().toISOString()
+  });
+});
 
 // In-memory store for games
 const games = {};
@@ -491,6 +507,23 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+
+// Add error handling for server
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend server running on port ${PORT}`);
+  console.log(`Health check available at http://localhost:${PORT}/health`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

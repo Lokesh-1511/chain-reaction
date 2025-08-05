@@ -3,25 +3,42 @@ const API_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api' 
   : 'https://chain-reaction-backend-pml1.onrender.com/api';
 
+// Helper function to handle API calls with error handling
+async function apiCall(url, options = {}) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+}
+
 export async function createGame({ mode, row, col, players, gameId }) {
-  const res = await fetch(`${API_URL}/game`, {
+  return await apiCall(`${API_URL}/game`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode, row, col, players, id: gameId })
   });
-  return res.json();
 }
 
 export async function joinGame(gameId, username) {
-  const res = await fetch(`${API_URL}/game/${gameId}/join`, {
+  return await apiCall(`${API_URL}/game/${gameId}/join`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username })
   });
-  return res.json();
 }
 
 export async function getGameState(gameId) {
-  const res = await fetch(`${API_URL}/game/${gameId}`);
-  return res.json();
+  return await apiCall(`${API_URL}/game/${gameId}`);
 }
