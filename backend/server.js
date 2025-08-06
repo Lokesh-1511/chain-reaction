@@ -56,9 +56,30 @@ app.get('/', (req, res) => {
 const games = {};
 let gameIdCounter = 1;
 
+// Generate a unique alphanumeric Game/Room ID
+function generateRoomCode() {
+  let roomCode;
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  do {
+    roomCode = Math.random().toString(36).substr(2, 6).toUpperCase();
+    attempts++;
+  } while (games[roomCode] && attempts < maxAttempts);
+  
+  if (attempts >= maxAttempts) {
+    // Fallback to timestamp-based code if too many collisions
+    roomCode = Date.now().toString(36).toUpperCase().substr(-6);
+  }
+  
+  return roomCode;
+}
+
 // Helper: Create a new game session
 function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
-  const gameId = id || gameIdCounter++;
+  // For multiplayer room-based games, use alphanumeric room codes
+  // For single player games, use incrementing numbers for simplicity
+  const gameId = id || (mode === 'multi' ? generateRoomCode() : gameIdCounter++);
   games[gameId] = {
     id: gameId,
     mode, // 'single' or 'multi'
