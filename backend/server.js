@@ -199,10 +199,14 @@ io.on('connection', (socket) => {
   socket.on('makeMove', ({ gameId, playerId, move }) => {
     const game = games[gameId];
     if (!game || game.status !== 'active') return;
+    
+    // Use the correct room format based on game mode
+    const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    
     game.state = applyMove(game.state, move, playerId);
-    io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
+    io.to(roomName).emit('gameUpdate', { gameId, state: game.state });
     if (game.state.status === 'finished') {
-      io.to(`game_${gameId}`).emit('gameOver', { winner: game.state.winner });
+      io.to(roomName).emit('gameOver', { winner: game.state.winner });
     }
   });
 
@@ -210,12 +214,15 @@ io.on('connection', (socket) => {
     const game = games[gameId];
     if (!game || game.mode !== 'multi') return;
     
+    // Use the correct room format for multiplayer games
+    const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    
     // Remove player from active players
     game.activePlayers.delete(playerId);
     
     // If the host exits, close the game for all players
     if (playerId === game.hostPlayerId) {
-      io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+      io.to(roomName).emit('gameClosedByHost', { 
         gameId, 
         message: 'Game closed: Host has left the game' 
       });
@@ -235,17 +242,17 @@ io.on('connection', (socket) => {
       const winner = activePlayerArray[0];
       game.state.status = 'finished';
       game.state.winner = winner;
-      io.to(`game_${gameId}`).emit('gameOver', { winner });
+      io.to(roomName).emit('gameOver', { winner });
     } else if (game.activePlayers.size < 1) {
       // If no players remain, close the game
-      io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+      io.to(roomName).emit('gameClosedByHost', { 
         gameId, 
         message: 'Game closed: No players remaining' 
       });
       delete games[gameId];
     } else {
       // Notify remaining players
-      io.to(`game_${gameId}`).emit('playerLeft', { 
+      io.to(roomName).emit('playerLeft', { 
         gameId, 
         playerId, 
         remainingPlayers: activePlayerArray,
@@ -274,8 +281,11 @@ io.on('connection', (socket) => {
     game.replayRequestedBy = playerId;
     game.replayRequests[playerId] = true;
     
+    // Use the correct room format for multiplayer games
+    const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    
     // Notify all players about the replay request
-    io.to(`game_${gameId}`).emit('replayRequested', { 
+    io.to(roomName).emit('replayRequested', { 
       gameId, 
       requestedBy: playerId,
       message: `Player ${playerId} wants to play again!`
@@ -286,6 +296,9 @@ io.on('connection', (socket) => {
     const game = games[gameId];
     if (!game || game.mode !== 'multi') return;
     
+    // Use the correct room format for multiplayer games
+    const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    
     game.replayRequests[playerId] = response;
     
     // If player refuses to play again, handle it as an exit
@@ -295,7 +308,7 @@ io.on('connection', (socket) => {
       
       // If the host refuses, close the game
       if (playerId === game.hostPlayerId) {
-        io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+        io.to(roomName).emit('gameClosedByHost', { 
           gameId, 
           message: 'Game closed: Host declined to play again' 
         });
@@ -313,11 +326,11 @@ io.on('connection', (socket) => {
         const winner = activePlayerArray[0];
         game.state.status = 'finished';
         game.state.winner = winner;
-        io.to(`game_${gameId}`).emit('gameOver', { winner });
+        io.to(roomName).emit('gameOver', { winner });
         return;
       } else if (game.activePlayers.size < 1) {
         // If no players remain, close the game
-        io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+        io.to(roomName).emit('gameClosedByHost', { 
           gameId, 
           message: 'Game closed: No players remaining' 
         });
@@ -326,7 +339,7 @@ io.on('connection', (socket) => {
       }
       
       // Notify remaining players
-      io.to(`game_${gameId}`).emit('playerLeft', { 
+      io.to(roomName).emit('playerLeft', { 
         gameId, 
         playerId, 
         remainingPlayers: activePlayerArray,
@@ -344,7 +357,7 @@ io.on('connection', (socket) => {
         const newState = resetGameState(game);
         
         // Notify remaining players that the game is restarting
-        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: newState });
+        io.to(roomName).emit('gameRestarted', { gameId, state: newState });
       }
       
       return;
@@ -361,17 +374,17 @@ io.on('connection', (socket) => {
         const newState = resetGameState(game);
         
         // Notify all players that the game is restarting
-        io.to(`game_${gameId}`).emit('gameRestarted', { gameId, state: newState });
+        io.to(roomName).emit('gameRestarted', { gameId, state: newState });
       } else {
         // Not all players agreed, cancel the replay
         game.replayRequests = {};
         game.replayRequestedBy = null;
         
-        io.to(`game_${gameId}`).emit('replayCancelled', { gameId });
+        io.to(roomName).emit('replayCancelled', { gameId });
       }
     } else {
       // Update other players about the response
-      io.to(`game_${gameId}`).emit('replayResponse', { 
+      io.to(roomName).emit('replayResponse', { 
         gameId, 
         playerId, 
         response,
@@ -384,12 +397,15 @@ io.on('connection', (socket) => {
     const game = games[gameId];
     if (!game || game.status !== 'active') return;
     
+    // Use the correct room format for multiplayer games
+    const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    
     // Remove player from active players
     game.activePlayers.delete(playerId);
     
     // If the host surrenders, close the game for all players
     if (playerId === game.hostPlayerId) {
-      io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+      io.to(roomName).emit('gameClosedByHost', { 
         gameId, 
         message: 'Game closed: Host has surrendered' 
       });
@@ -409,17 +425,17 @@ io.on('connection', (socket) => {
       const winner = activePlayerArray[0];
       game.state.status = 'finished';
       game.state.winner = winner;
-      io.to(`game_${gameId}`).emit('gameOver', { winner });
+      io.to(roomName).emit('gameOver', { winner });
     } else if (game.activePlayers.size < 1) {
       // If no players remain, close the game
-      io.to(`game_${gameId}`).emit('gameClosedByHost', { 
+      io.to(roomName).emit('gameClosedByHost', { 
         gameId, 
         message: 'Game closed: No players remaining' 
       });
       delete games[gameId];
     } else {
       // Notify remaining players about the surrender
-      io.to(`game_${gameId}`).emit('playerSurrendered', { 
+      io.to(roomName).emit('playerSurrendered', { 
         gameId, 
         playerId, 
         remainingPlayers: activePlayerArray,
@@ -427,7 +443,7 @@ io.on('connection', (socket) => {
       });
       
       // Update the game state for remaining players
-      io.to(`game_${gameId}`).emit('gameUpdate', { gameId, state: game.state });
+      io.to(roomName).emit('gameUpdate', { gameId, state: game.state });
     }
   });
 
