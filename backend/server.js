@@ -80,18 +80,21 @@ function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
   // For multiplayer room-based games, use alphanumeric room codes
   // For single player games, use incrementing numbers for simplicity
   const gameId = id || (mode === 'multi' ? generateRoomCode() : gameIdCounter++);
+  
+  const initialState = createInitialState(row, col, players);
+  
   games[gameId] = {
     id: gameId,
     mode, // 'single' or 'multi'
     players: [],
     playerUsernames: {}, // Track player usernames
-    state: createInitialState(row, col, players),
+    state: initialState,
     currentPlayer: 1,
     status: 'waiting', // 'waiting', 'active', 'finished'
     replayRequests: {}, // Track replay requests: { playerId: boolean }
     replayRequestedBy: null, // Track who requested the replay
     hostPlayerId: null, // Track the host player (first player to join)
-    activePlayers: new Set(), // Track currently active players
+    activePlayers: new Set(), // Track currently active players - CONVERT TO SET!
   };
   return games[gameId];
 }
