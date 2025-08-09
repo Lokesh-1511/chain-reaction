@@ -211,15 +211,26 @@ const GameBoard = ({
     }
     
     // For multiplayer, handle server connections
-    // Join game room
-    socket.emit('joinGame', { gameId, playerId });
-    // Fetch initial state
-    getGameState(gameId).then(game => {
-      setGameState(game.state);
-      setCells(game.state.grid);
-      setCurrentPlayer(game.state.currentPlayer);
-      setActivePlayers(game.state.activePlayers);
-    });
+    if (mode === 'multi' && roomCode) {
+      // For room-based multiplayer, we're already connected to the room from Menu
+      // Just fetch the game state
+      getGameState(gameId).then(game => {
+        setGameState(game.state);
+        setCells(game.state.grid);
+        setCurrentPlayer(game.state.currentPlayer);
+        setActivePlayers(game.state.activePlayers);
+      });
+    } else if (mode === 'multi') {
+      // For old-style multiplayer games, join the game room
+      socket.emit('joinGame', { gameId, playerId });
+      // Fetch initial state
+      getGameState(gameId).then(game => {
+        setGameState(game.state);
+        setCells(game.state.grid);
+        setCurrentPlayer(game.state.currentPlayer);
+        setActivePlayers(game.state.activePlayers);
+      });
+    }
     // Listen for updates
     socket.on('gameUpdate', ({ state, roomCode: updateRoomCode, playerUsernames: updateUsernames }) => {
       setGameState(state);
