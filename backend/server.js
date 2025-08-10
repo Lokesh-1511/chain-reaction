@@ -193,7 +193,10 @@ app.get('/api/game/:id', (req, res) => {
 // Socket.IO: Handle moves and real-time updates
 io.on('connection', (socket) => {
   socket.on('joinGame', ({ gameId, playerId }) => {
-    socket.join(`game_${gameId}`);
+    const game = games[gameId];
+    // Use the correct room format based on game mode
+    const roomName = game && game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    socket.join(roomName);
     socket.gameId = gameId;
     socket.playerId = playerId;
     socket.emit('joined', { gameId, playerId });
