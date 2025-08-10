@@ -51,6 +51,11 @@ const GameBoard = ({
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
+  // Debug logging for modal states
+  useEffect(() => {
+    console.log(`🖥️ Modal states: showModal=${showModal}, replayRequested=${replayRequested}, showReplayWaiting=${showReplayWaiting}, hasResponded=${hasResponded}`);
+  }, [showModal, replayRequested, showReplayWaiting, hasResponded]);
+
   // Helper function to get player display name
   const getPlayerDisplayName = (playerId) => {
     if (mode === 'multi' && gamePlayerUsernames[playerId]) {
@@ -284,11 +289,16 @@ const GameBoard = ({
     // Listen for replay-related events
     socket.on('replayRequested', ({ requestedBy, message, roomCode: eventRoomCode, gameId: eventGameId }) => {
       console.log(`🔔 Received replayRequested: requestedBy=${requestedBy}, eventRoomCode=${eventRoomCode}, eventGameId=${eventGameId}, myPlayerId=${playerId}`);
+      console.log(`🎯 Current state: replayRequested=${replayRequested}, showModal=${showModal}, hasResponded=${hasResponded}`);
+      
       if (requestedBy !== playerId) {
+        console.log(`✅ Player ${playerId} should show replay request modal`);
         setReplayRequested(true);
         setReplayRequestedBy(requestedBy);
         setReplayMessage(message);
         setHasResponded(false);
+      } else {
+        console.log(`🚫 Player ${playerId} is the requester, not showing modal`);
       }
     });
 
@@ -476,15 +486,16 @@ const GameBoard = ({
       setExplodingCells(new Set());
     } else {
       // In multiplayer, request replay from all players
-      // Use roomCode if available (new system), otherwise use gameId (old system)
       console.log(`🚀 Emitting replay request: roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
-      if (roomCode) {
-        console.log(`📡 Using room-based system with roomCode: ${roomCode}`);
-        socket.emit('requestReplay', { roomCode, playerId });
-      } else {
-        console.log(`📡 Using old system with gameId: ${gameId}`);
-        socket.emit('requestReplay', { gameId, playerId });
-      }
+      
+      // Send both roomCode and gameId for backend compatibility
+      const replayData = { playerId };
+      if (roomCode) replayData.roomCode = roomCode;
+      if (gameId) replayData.gameId = gameId;
+      
+      console.log(`📡 Sending requestReplay with data:`, replayData);
+      socket.emit('requestReplay', replayData);
+      
       setShowModal(false); // Close the game over modal
       setShowReplayWaiting(true); // Show waiting for others modal
     }
@@ -492,14 +503,15 @@ const GameBoard = ({
 
   const handleReplayResponse = (response) => {
     console.log(`🎯 HandleReplayResponse called: response=${response}, roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
-    // Use roomCode if available (new system), otherwise use gameId (old system)
-    if (roomCode) {
-      console.log(`📡 Responding via room-based system with roomCode: ${roomCode}`);
-      socket.emit('respondToReplay', { roomCode, playerId, response });
-    } else {
-      console.log(`📡 Responding via old system with gameId: ${gameId}`);
-      socket.emit('respondToReplay', { gameId, playerId, response });
-    }
+    
+    // Send both roomCode and gameId for backend compatibility
+    const responseData = { playerId, response };
+    if (roomCode) responseData.roomCode = roomCode;
+    if (gameId) responseData.gameId = gameId;
+    
+    console.log(`📡 Sending respondToReplay with data:`, responseData);
+    socket.emit('respondToReplay', responseData);
+    
     setHasResponded(true);
     if (!response) {
       setReplayRequested(false);
@@ -519,11 +531,15 @@ const GameBoard = ({
 
   const handleExit = () => {
     if (mode === 'multi' && playerId) {
-      // Use roomCode if available (new system), otherwise use gameId (old system)
+      // Send both roomCode and gameId for backend compatibility
+      const exitData = { playerId };
+      
       if (roomCode) {
-        socket.emit('exitRoom', { roomCode, playerId });
+        exitData.roomCode = roomCode;
+        socket.emit('exitRoom', exitData);
       } else if (gameId) {
-        socket.emit('exitGame', { gameId, playerId });
+        exitData.gameId = gameId;
+        socket.emit('exitGame', exitData);
       }
     }
     onExit();
