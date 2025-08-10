@@ -550,8 +550,12 @@ io.on('connection', (socket) => {
 
   // Room-based replay handlers
   socket.on('requestReplay', ({ roomCode, playerId }) => {
+    console.log(`🔄 Room replay request: roomCode=${roomCode}, playerId=${playerId}`);
     const game = games[roomCode];
-    if (!game) return;
+    if (!game) {
+      console.log(`❌ Game not found for roomCode: ${roomCode}`);
+      return;
+    }
     
     // Initialize replay requests if not exists
     if (!game.replayRequests) {
@@ -562,6 +566,8 @@ io.on('connection', (socket) => {
     game.replayRequestedBy = playerId;
     game.replayRequests[playerId] = true;
     
+    console.log(`📤 Emitting replayRequested to room_${roomCode}, activePlayers:`, Array.from(game.activePlayers));
+    
     // Notify all players about the replay request
     io.to(`room_${roomCode}`).emit('replayRequested', { 
       roomCode, 
@@ -571,10 +577,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('respondToReplay', ({ roomCode, playerId, response }) => {
+    console.log(`🎯 Room replay response: roomCode=${roomCode}, playerId=${playerId}, response=${response}`);
     const game = games[roomCode];
-    if (!game) return;
+    if (!game) {
+      console.log(`❌ Game not found for roomCode: ${roomCode}`);
+      return;
+    }
     
     game.replayRequests[playerId] = response;
+    console.log(`📊 Current replay requests:`, game.replayRequests);
+    console.log(`👥 Active players:`, Array.from(game.activePlayers));
     
     // If player refuses to play again, handle it as an exit
     if (!response) {
@@ -647,14 +659,20 @@ io.on('connection', (socket) => {
     const allActivePlayersResponded = activePlayersArray.every(pid => game.replayRequests[pid] !== undefined);
     const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
     
+    console.log(`🔍 Checking responses: activePlayersArray=${JSON.stringify(activePlayersArray)}`);
+    console.log(`✅ All responded: ${allActivePlayersResponded}, All agreed: ${allActivePlayersAgreed}`);
+    
     if (allActivePlayersResponded) {
       if (allActivePlayersAgreed) {
+        console.log(`🎮 All players agreed! Restarting game for roomCode: ${roomCode}`);
         // Completely reset the game state while preserving player information  
         const newState = resetGameState(game);
         
         // Notify all players that the game is restarting
+        console.log(`📤 Emitting gameRestarted to room_${roomCode}`);
         io.to(`room_${roomCode}`).emit('gameRestarted', { roomCode, state: newState });
       } else {
+        console.log(`❌ Not all players agreed. Cancelling replay for roomCode: ${roomCode}`);
         // Not all players agreed, cancel the replay
         game.replayRequests = {};
         game.replayRequestedBy = null;
@@ -662,6 +680,7 @@ io.on('connection', (socket) => {
         io.to(`room_${roomCode}`).emit('replayCancelled', { roomCode });
       }
     } else {
+      console.log(`⏳ Still waiting for responses from: ${activePlayersArray.filter(pid => game.replayRequests[pid] === undefined)}`);
       // Update other players about the response
       io.to(`room_${roomCode}`).emit('replayResponse', { 
         roomCode, 

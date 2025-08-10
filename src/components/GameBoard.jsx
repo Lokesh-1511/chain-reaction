@@ -281,7 +281,8 @@ const GameBoard = ({
     });
 
     // Listen for replay-related events
-    socket.on('replayRequested', ({ requestedBy, message }) => {
+    socket.on('replayRequested', ({ requestedBy, message, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`🔔 Received replayRequested: requestedBy=${requestedBy}, eventRoomCode=${eventRoomCode}, eventGameId=${eventGameId}, myPlayerId=${playerId}`);
       if (requestedBy !== playerId) {
         setReplayRequested(true);
         setReplayRequestedBy(requestedBy);
@@ -290,12 +291,14 @@ const GameBoard = ({
       }
     });
 
-    socket.on('replayResponse', ({ playerId: respondedPlayerId, response, waitingFor }) => {
+    socket.on('replayResponse', ({ playerId: respondedPlayerId, response, waitingFor, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`📨 Received replayResponse: respondedPlayerId=${respondedPlayerId}, response=${response}, waitingFor=${JSON.stringify(waitingFor)}`);
       setWaitingForPlayers(waitingFor);
       // Could add more UI feedback here about who responded
     });
 
-    socket.on('gameRestarted', ({ state }) => {
+    socket.on('gameRestarted', ({ state, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`🎮 Received gameRestarted: eventRoomCode=${eventRoomCode}, eventGameId=${eventGameId}, myPlayerId=${playerId}`);
       setGameState(state);
       setCells(state.grid);
       setCurrentPlayer(state.currentPlayer);
@@ -433,6 +436,7 @@ const GameBoard = ({
   };
 
   const handleReplay = () => {
+    console.log(`🎯 HandleReplay called: mode=${mode}, gameId=${gameId}, roomCode=${roomCode}, playerId=${playerId}`);
     if (mode === 'single') {
       // For singleplayer, restart the game locally without reloading the page
       const newState = {
@@ -472,9 +476,12 @@ const GameBoard = ({
     } else {
       // In multiplayer, request replay from all players
       // Use roomCode if available (new system), otherwise use gameId (old system)
+      console.log(`🚀 Emitting replay request: roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
       if (roomCode) {
+        console.log(`📡 Using room-based system with roomCode: ${roomCode}`);
         socket.emit('requestReplay', { roomCode, playerId });
       } else {
+        console.log(`📡 Using old system with gameId: ${gameId}`);
         socket.emit('requestReplay', { gameId, playerId });
       }
       setShowModal(false); // Close the game over modal
@@ -483,10 +490,13 @@ const GameBoard = ({
   };
 
   const handleReplayResponse = (response) => {
+    console.log(`🎯 HandleReplayResponse called: response=${response}, roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
     // Use roomCode if available (new system), otherwise use gameId (old system)
     if (roomCode) {
+      console.log(`📡 Responding via room-based system with roomCode: ${roomCode}`);
       socket.emit('respondToReplay', { roomCode, playerId, response });
     } else {
+      console.log(`📡 Responding via old system with gameId: ${gameId}`);
       socket.emit('respondToReplay', { gameId, playerId, response });
     }
     setHasResponded(true);
