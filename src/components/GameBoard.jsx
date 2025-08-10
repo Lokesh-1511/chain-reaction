@@ -471,14 +471,24 @@ const GameBoard = ({
       setExplodingCells(new Set());
     } else {
       // In multiplayer, request replay from all players
-      socket.emit('requestReplay', { gameId, playerId });
+      // Use roomCode if available (new system), otherwise use gameId (old system)
+      if (roomCode) {
+        socket.emit('requestReplay', { roomCode, playerId });
+      } else {
+        socket.emit('requestReplay', { gameId, playerId });
+      }
       setShowModal(false); // Close the game over modal
       setShowReplayWaiting(true); // Show waiting for others modal
     }
   };
 
   const handleReplayResponse = (response) => {
-    socket.emit('respondToReplay', { gameId, playerId, response });
+    // Use roomCode if available (new system), otherwise use gameId (old system)
+    if (roomCode) {
+      socket.emit('respondToReplay', { roomCode, playerId, response });
+    } else {
+      socket.emit('respondToReplay', { gameId, playerId, response });
+    }
     setHasResponded(true);
     if (!response) {
       setReplayRequested(false);
@@ -497,17 +507,26 @@ const GameBoard = ({
   };
 
   const handleExit = () => {
-    if (mode === 'multi' && gameId && playerId) {
-      // Notify server about player exit
-      socket.emit('exitGame', { gameId, playerId });
+    if (mode === 'multi' && playerId) {
+      // Use roomCode if available (new system), otherwise use gameId (old system)
+      if (roomCode) {
+        socket.emit('exitRoom', { roomCode, playerId });
+      } else if (gameId) {
+        socket.emit('exitGame', { gameId, playerId });
+      }
     }
     onExit();
   };
 
   const handleSurrender = () => {
-    if (mode === 'multi' && gameId && playerId) {
+    if (mode === 'multi' && playerId) {
       setHasSurrendered(true); // Mark that this player has surrendered
-      socket.emit('surrenderGame', { gameId, playerId });
+      // Use roomCode if available (new system), otherwise use gameId (old system)
+      if (roomCode) {
+        socket.emit('surrenderRoom', { roomCode, playerId });
+      } else if (gameId) {
+        socket.emit('surrenderGame', { gameId, playerId });
+      }
       // Close the surrender confirmation modal
       setShowSurrenderConfirm(false);
       // Don't exit immediately - wait for gameOver event like other players

@@ -547,6 +547,242 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  // Room-based replay handlers
+  socket.on('requestReplay', ({ roomCode, playerId }) => {
+    const game = games[roomCode];
+    if (!game) return;
+    
+    // Initialize replay requests if not exists
+    if (!game.replayRequests) {
+      game.replayRequests = {};
+    }
+    
+    // Set the player who requested the replay
+    game.replayRequestedBy = playerId;
+    game.replayRequests[playerId] = true;
+    
+    // Notify all players about the replay request
+    io.to(`room_${roomCode}`).emit('replayRequested', { 
+      roomCode, 
+      requestedBy: playerId,
+      message: `${game.playerUsernames[playerId] || `Player ${playerId}`} wants to play again!`
+    });
+  });
+
+  socket.on('respondToReplay', ({ roomCode, playerId, response }) => {
+    const game = games[roomCode];
+    if (!game) return;
+    
+    game.replayRequests[playerId] = response;
+    
+    // If player refuses to play again, handle it as an exit
+    if (!response) {
+      // Remove player from active players
+      game.activePlayers.delete(playerId);
+      
+      // If the host refuses, close the game
+      if (playerId === game.hostPlayerId) {
+        io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+          roomCode, 
+          message: 'Game closed: Host declined to play again' 
+        });
+        delete games[roomCode];
+        return;
+      }
+      
+      // Update game state with reduced player count
+      game.state.players = game.activePlayers.size;
+      const activePlayerArray = Array.from(game.activePlayers);
+      game.state.activePlayers = activePlayerArray;
+      
+      // Check if there's only one player left - they win
+      if (game.activePlayers.size === 1) {
+        const winner = activePlayerArray[0];
+        game.state.status = 'finished';
+        game.state.winner = winner;
+        io.to(`room_${roomCode}`).emit('gameOver', { 
+          winner,
+          winnerUsername: game.playerUsernames[winner],
+          playerUsernames: game.playerUsernames
+        });
+        return;
+      } else if (game.activePlayers.size < 1) {
+        // If no players remain, close the game
+        io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+          roomCode, 
+          message: 'Game closed: No players remaining' 
+        });
+        delete games[roomCode];
+        return;
+      }
+      
+      // Notify remaining players
+      io.to(`room_${roomCode}`).emit('playerLeft', { 
+        roomCode, 
+        playerId, 
+        remainingPlayers: activePlayerArray,
+        message: `${game.playerUsernames[playerId] || `Player ${playerId}`} declined to play again and left the game` 
+      });
+      
+      // Reset replay requests and check if remaining players all agreed
+      delete game.replayRequests[playerId];
+      const activePlayersArray = Array.from(game.activePlayers);
+      const allActivePlayersResponded = activePlayersArray.every(pid => game.replayRequests[pid] !== undefined);
+      const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
+      
+      if (allActivePlayersResponded && allActivePlayersAgreed) {
+        // Completely reset the game state while preserving player information
+        const newState = resetGameState(game);
+        
+        // Notify remaining players that the game is restarting
+        io.to(`room_${roomCode}`).emit('gameRestarted', { roomCode, state: newState });
+      }
+      
+      return;
+    }
+    
+    // Check if all active players have responded
+    const activePlayersArray = Array.from(game.activePlayers);
+    const allActivePlayersResponded = activePlayersArray.every(pid => game.replayRequests[pid] !== undefined);
+    const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
+    
+    if (allActivePlayersResponded) {
+      if (allActivePlayersAgreed) {
+        // Completely reset the game state while preserving player information  
+        const newState = resetGameState(game);
+        
+        // Notify all players that the game is restarting
+        io.to(`room_${roomCode}`).emit('gameRestarted', { roomCode, state: newState });
+      } else {
+        // Not all players agreed, cancel the replay
+        game.replayRequests = {};
+        game.replayRequestedBy = null;
+        
+        io.to(`room_${roomCode}`).emit('replayCancelled', { roomCode });
+      }
+    } else {
+      // Update other players about the response
+      io.to(`room_${roomCode}`).emit('replayResponse', { 
+        roomCode, 
+        playerId, 
+        response,
+        waitingFor: activePlayersArray.filter(pid => game.replayRequests[pid] === undefined)
+      });
+    }
+  });
+
+  // Room-based exit and surrender handlers
+  socket.on('exitRoom', ({ roomCode, playerId }) => {
+    const game = games[roomCode];
+    if (!game) return;
+    
+    // Remove player from active players
+    game.activePlayers.delete(playerId);
+    
+    // If the host exits, close the game for all players
+    if (playerId === game.hostPlayerId) {
+      io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+        roomCode, 
+        message: 'Game closed: Host has left the game' 
+      });
+      delete games[roomCode];
+      return;
+    }
+    
+    // Update game state with reduced player count
+    game.state.players = game.activePlayers.size;
+    
+    // Remove the player from active players in game state
+    const activePlayerArray = Array.from(game.activePlayers);
+    game.state.activePlayers = activePlayerArray;
+    
+    // Check if there's only one player left - they win
+    if (game.activePlayers.size === 1) {
+      const winner = activePlayerArray[0];
+      game.state.status = 'finished';
+      game.state.winner = winner;
+      io.to(`room_${roomCode}`).emit('gameOver', { 
+        winner,
+        winnerUsername: game.playerUsernames[winner],
+        playerUsernames: game.playerUsernames
+      });
+    } else if (game.activePlayers.size < 1) {
+      // If no players remain, close the game
+      io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+        roomCode, 
+        message: 'Game closed: No players remaining' 
+      });
+      delete games[roomCode];
+    } else {
+      // Notify remaining players
+      io.to(`room_${roomCode}`).emit('playerLeft', { 
+        roomCode, 
+        playerId, 
+        remainingPlayers: activePlayerArray,
+        message: `${game.playerUsernames[playerId] || `Player ${playerId}`} has left the game` 
+      });
+    }
+  });
+
+  socket.on('surrenderRoom', ({ roomCode, playerId }) => {
+    const game = games[roomCode];
+    if (!game || game.status !== 'active') return;
+    
+    // Remove player from active players
+    game.activePlayers.delete(playerId);
+    
+    // If the host surrenders, close the game for all players
+    if (playerId === game.hostPlayerId) {
+      io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+        roomCode, 
+        message: 'Game closed: Host has surrendered' 
+      });
+      delete games[roomCode];
+      return;
+    }
+    
+    // Update game state with reduced player count
+    game.state.players = game.activePlayers.size;
+    
+    // Remove the player from active players in game state
+    const activePlayerArray = Array.from(game.activePlayers);
+    game.state.activePlayers = activePlayerArray;
+    
+    // Check if there's only one player left - they win
+    if (game.activePlayers.size === 1) {
+      const winner = activePlayerArray[0];
+      game.state.status = 'finished';
+      game.state.winner = winner;
+      io.to(`room_${roomCode}`).emit('gameOver', { 
+        winner,
+        winnerUsername: game.playerUsernames[winner],
+        playerUsernames: game.playerUsernames
+      });
+    } else if (game.activePlayers.size < 1) {
+      // If no players remain, close the game
+      io.to(`room_${roomCode}`).emit('gameClosedByHost', { 
+        roomCode, 
+        message: 'Game closed: No players remaining' 
+      });
+      delete games[roomCode];
+    } else {
+      // Notify remaining players about the surrender
+      io.to(`room_${roomCode}`).emit('playerSurrendered', { 
+        roomCode, 
+        playerId, 
+        remainingPlayers: activePlayerArray,
+        message: `${game.playerUsernames[playerId] || `Player ${playerId}`} has surrendered` 
+      });
+      
+      // Update the game state for remaining players
+      io.to(`room_${roomCode}`).emit('gameUpdate', { 
+        roomCode, 
+        state: game.state,
+        playerUsernames: game.playerUsernames
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 5000;
