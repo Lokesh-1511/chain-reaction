@@ -557,6 +557,9 @@ io.on('connection', (socket) => {
       return;
     }
     
+    console.log(`🔍 Before request - game.activePlayers:`, game.activePlayers);
+    console.log(`📋 Before request - game.players:`, game.players);
+    
     // Initialize replay requests if not exists
     if (!game.replayRequests) {
       game.replayRequests = {};
@@ -659,7 +662,12 @@ io.on('connection', (socket) => {
     const allActivePlayersResponded = activePlayersArray.every(pid => game.replayRequests[pid] !== undefined);
     const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
     
-    console.log(`🔍 Checking responses: activePlayersArray=${JSON.stringify(activePlayersArray)}`);
+    console.log(`🔍 DEBUG - roomCode: ${roomCode}`);
+    console.log(`👥 game.activePlayers Set:`, game.activePlayers);
+    console.log(`📋 activePlayersArray:`, activePlayersArray);
+    console.log(`📝 game.replayRequests:`, game.replayRequests);
+    console.log(`🎯 game.players array:`, game.players);
+    console.log(`⚙️ game.state.players:`, game.state.players);
     console.log(`✅ All responded: ${allActivePlayersResponded}, All agreed: ${allActivePlayersAgreed}`);
     
     if (allActivePlayersResponded) {
