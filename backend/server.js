@@ -80,18 +80,21 @@ function createGame({ id, mode, row = 9, col = 6, players = 2 }) {
   // For multiplayer room-based games, use alphanumeric room codes
   // For single player games, use incrementing numbers for simplicity
   const gameId = id || (mode === 'multi' ? generateRoomCode() : gameIdCounter++);
+  
+  const initialState = createInitialState(row, col, players);
+  
   games[gameId] = {
     id: gameId,
     mode, // 'single' or 'multi'
     players: [],
     playerUsernames: {}, // Track player usernames
-    state: createInitialState(row, col, players),
+    state: initialState,
     currentPlayer: 1,
     status: 'waiting', // 'waiting', 'active', 'finished'
     replayRequests: {}, // Track replay requests: { playerId: boolean }
     replayRequestedBy: null, // Track who requested the replay
     hostPlayerId: null, // Track the host player (first player to join)
-    activePlayers: new Set(), // Track currently active players
+    activePlayers: new Set(), // Track currently active players - CONVERT TO SET!
   };
   return games[gameId];
 }
@@ -190,7 +193,10 @@ app.get('/api/game/:id', (req, res) => {
 // Socket.IO: Handle moves and real-time updates
 io.on('connection', (socket) => {
   socket.on('joinGame', ({ gameId, playerId }) => {
-    socket.join(`game_${gameId}`);
+    const game = games[gameId];
+    // Use the correct room format based on game mode
+    const roomName = game && game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
+    socket.join(roomName);
     socket.gameId = gameId;
     socket.playerId = playerId;
     socket.emit('joined', { gameId, playerId });
@@ -272,9 +278,6 @@ io.on('connection', (socket) => {
     const game = games[gameId];
     if (!game || game.mode !== 'multi') return;
     
-    console.log(`[REPLAY] Player ${playerId} requesting replay in game ${gameId}`);
-    console.log(`[REPLAY] Active players:`, Array.from(game.activePlayers));
-    
     // Initialize replay requests if not exists
     if (!game.replayRequests) {
       game.replayRequests = {};
@@ -283,8 +286,6 @@ io.on('connection', (socket) => {
     // Set the player who requested the replay
     game.replayRequestedBy = playerId;
     game.replayRequests[playerId] = true;
-    
-    console.log(`[REPLAY] Replay requests after request:`, game.replayRequests);
     
     // Use the correct room format for multiplayer games
     const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
@@ -295,23 +296,16 @@ io.on('connection', (socket) => {
       requestedBy: playerId,
       message: `Player ${playerId} wants to play again!`
     });
-    
-    console.log(`[REPLAY] Sent replayRequested to room: ${roomName}`);
   });
 
   socket.on('respondToReplay', ({ gameId, playerId, response }) => {
     const game = games[gameId];
     if (!game || game.mode !== 'multi') return;
     
-    console.log(`[REPLAY] Player ${playerId} responding to replay in game ${gameId}: ${response}`);
-    
     // Use the correct room format for multiplayer games
     const roomName = game.mode === 'multi' ? `room_${gameId}` : `game_${gameId}`;
     
     game.replayRequests[playerId] = response;
-    
-    console.log(`[REPLAY] Replay requests after response:`, game.replayRequests);
-    console.log(`[REPLAY] Active players:`, Array.from(game.activePlayers));
     
     // If player refuses to play again, handle it as an exit
     if (!response) {
@@ -380,28 +374,14 @@ io.on('connection', (socket) => {
     const allActivePlayersResponded = activePlayersArray.every(pid => game.replayRequests[pid] !== undefined);
     const allActivePlayersAgreed = activePlayersArray.every(pid => game.replayRequests[pid] === true);
     
-    console.log(`[REPLAY] Checking if all players responded:`);
-    console.log(`[REPLAY] - Active players array:`, activePlayersArray);
-    console.log(`[REPLAY] - Replay requests:`, game.replayRequests);
-    console.log(`[REPLAY] - All responded?`, allActivePlayersResponded);
-    console.log(`[REPLAY] - All agreed?`, allActivePlayersAgreed);
-    
-    // Debug each player's status
-    activePlayersArray.forEach(pid => {
-      console.log(`[REPLAY] - Player ${pid}: ${game.replayRequests[pid]} (responded: ${game.replayRequests[pid] !== undefined})`);
-    });
-    
     if (allActivePlayersResponded) {
       if (allActivePlayersAgreed) {
-        console.log(`[REPLAY] All players agreed! Restarting game...`);
         // Completely reset the game state while preserving player information  
         const newState = resetGameState(game);
         
-        console.log(`[REPLAY] Sending gameRestarted to room: ${roomName}`);
         // Notify all players that the game is restarting
         io.to(roomName).emit('gameRestarted', { gameId, state: newState });
       } else {
-        console.log(`[REPLAY] Not all players agreed, cancelling replay`);
         // Not all players agreed, cancel the replay
         game.replayRequests = {};
         game.replayRequestedBy = null;
@@ -409,7 +389,6 @@ io.on('connection', (socket) => {
         io.to(roomName).emit('replayCancelled', { gameId });
       }
     } else {
-      console.log(`[REPLAY] Still waiting for more players to respond`);
       // Update other players about the response
       io.to(roomName).emit('replayResponse', { 
         gameId, 
