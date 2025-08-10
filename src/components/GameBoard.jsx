@@ -40,6 +40,7 @@ const GameBoard = ({
   const [replayMessage, setReplayMessage] = useState('');
   const [hasResponded, setHasResponded] = useState(false);
   const [showReplayWaiting, setShowReplayWaiting] = useState(false);
+  const [waitingForPlayersState, setWaitingForPlayers] = useState([]);
   const [showGameClosed, setShowGameClosed] = useState(false);
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
@@ -800,8 +801,8 @@ const GameBoard = ({
                 ? "Waiting for all players to respond to your replay request..." 
                 : "Waiting for all players to respond to the replay request..."}
             </p>
-            {waitingForPlayers.length > 0 && (
-              <p>Still waiting for: {waitingForPlayers.join(', ')}</p>
+            {waitingForPlayersState.length > 0 && (
+              <p>Still waiting for: {waitingForPlayersState.join(', ')}</p>
             )}
             <div style={{ margin: '20px 0' }}>
               <div style={{ 
