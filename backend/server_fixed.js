@@ -536,10 +536,6 @@ io.on('connection', (socket) => {
           playerUsernames: game.playerUsernames
         };
         
-        // Set game status to finished
-        game.state.status = 'finished';
-        game.state.winner = result.winner;
-        
         io.to(roomName).emit('gameOver', eventData);
       } else {
         console.log(`🚫 No players remaining, closing game`);
@@ -552,7 +548,7 @@ io.on('connection', (socket) => {
         io.to(roomName).emit('gameClosedByHost', eventData);
         delete games[id];
       }
-      return; // Important: return here to prevent further notifications
+      return;
     }
     
     // Notify remaining players

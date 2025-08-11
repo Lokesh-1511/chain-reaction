@@ -40,6 +40,7 @@ const GameBoard = ({
   const [replayMessage, setReplayMessage] = useState('');
   const [hasResponded, setHasResponded] = useState(false);
   const [showReplayWaiting, setShowReplayWaiting] = useState(false);
+  const [waitingForPlayersState, setWaitingForPlayers] = useState([]);
   const [showGameClosed, setShowGameClosed] = useState(false);
   const [gameClosedMessage, setGameClosedMessage] = useState('');
   const [remainingPlayers, setRemainingPlayers] = useState([]);
@@ -49,6 +50,11 @@ const GameBoard = ({
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const containerRef = useRef(null);
   const headerRef = useRef(null);
+
+  // Debug logging for modal states
+  useEffect(() => {
+    console.log(`🖥️ Modal states: showModal=${showModal}, replayRequested=${replayRequested}, showReplayWaiting=${showReplayWaiting}, hasResponded=${hasResponded}`);
+  }, [showModal, replayRequested, showReplayWaiting, hasResponded]);
 
   // Helper function to get player display name
   const getPlayerDisplayName = (playerId) => {
@@ -281,21 +287,29 @@ const GameBoard = ({
     });
 
     // Listen for replay-related events
-    socket.on('replayRequested', ({ requestedBy, message }) => {
+    socket.on('replayRequested', ({ requestedBy, message, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`🔔 Received replayRequested: requestedBy=${requestedBy}, eventRoomCode=${eventRoomCode}, eventGameId=${eventGameId}, myPlayerId=${playerId}`);
+      console.log(`🎯 Current state: replayRequested=${replayRequested}, showModal=${showModal}, hasResponded=${hasResponded}`);
+      
       if (requestedBy !== playerId) {
+        console.log(`✅ Player ${playerId} should show replay request modal`);
         setReplayRequested(true);
         setReplayRequestedBy(requestedBy);
         setReplayMessage(message);
         setHasResponded(false);
+      } else {
+        console.log(`🚫 Player ${playerId} is the requester, not showing modal`);
       }
     });
 
-    socket.on('replayResponse', ({ playerId: respondedPlayerId, response, waitingFor }) => {
+    socket.on('replayResponse', ({ playerId: respondedPlayerId, response, waitingFor, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`📨 Received replayResponse: respondedPlayerId=${respondedPlayerId}, response=${response}, waitingFor=${JSON.stringify(waitingFor)}`);
       setWaitingForPlayers(waitingFor);
       // Could add more UI feedback here about who responded
     });
 
-    socket.on('gameRestarted', ({ state }) => {
+    socket.on('gameRestarted', ({ state, roomCode: eventRoomCode, gameId: eventGameId }) => {
+      console.log(`🎮 Received gameRestarted: eventRoomCode=${eventRoomCode}, eventGameId=${eventGameId}, myPlayerId=${playerId}`);
       setGameState(state);
       setCells(state.grid);
       setCurrentPlayer(state.currentPlayer);
@@ -433,6 +447,7 @@ const GameBoard = ({
   };
 
   const handleReplay = () => {
+    console.log(`🎯 HandleReplay called: mode=${mode}, gameId=${gameId}, roomCode=${roomCode}, playerId=${playerId}`);
     if (mode === 'single') {
       // For singleplayer, restart the game locally without reloading the page
       const newState = {
@@ -471,14 +486,32 @@ const GameBoard = ({
       setExplodingCells(new Set());
     } else {
       // In multiplayer, request replay from all players
-      socket.emit('requestReplay', { gameId, playerId });
+      console.log(`🚀 Emitting replay request: roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
+      
+      // Send both roomCode and gameId for backend compatibility
+      const replayData = { playerId };
+      if (roomCode) replayData.roomCode = roomCode;
+      if (gameId) replayData.gameId = gameId;
+      
+      console.log(`📡 Sending requestReplay with data:`, replayData);
+      socket.emit('requestReplay', replayData);
+      
       setShowModal(false); // Close the game over modal
       setShowReplayWaiting(true); // Show waiting for others modal
     }
   };
 
   const handleReplayResponse = (response) => {
-    socket.emit('respondToReplay', { gameId, playerId, response });
+    console.log(`🎯 HandleReplayResponse called: response=${response}, roomCode=${roomCode}, gameId=${gameId}, playerId=${playerId}`);
+    
+    // Send both roomCode and gameId for backend compatibility
+    const responseData = { playerId, response };
+    if (roomCode) responseData.roomCode = roomCode;
+    if (gameId) responseData.gameId = gameId;
+    
+    console.log(`📡 Sending respondToReplay with data:`, responseData);
+    socket.emit('respondToReplay', responseData);
+    
     setHasResponded(true);
     if (!response) {
       setReplayRequested(false);
@@ -497,17 +530,30 @@ const GameBoard = ({
   };
 
   const handleExit = () => {
-    if (mode === 'multi' && gameId && playerId) {
-      // Notify server about player exit
-      socket.emit('exitGame', { gameId, playerId });
+    if (mode === 'multi' && playerId) {
+      // Send both roomCode and gameId for backend compatibility
+      const exitData = { playerId };
+      
+      if (roomCode) {
+        exitData.roomCode = roomCode;
+        socket.emit('exitRoom', exitData);
+      } else if (gameId) {
+        exitData.gameId = gameId;
+        socket.emit('exitGame', exitData);
+      }
     }
     onExit();
   };
 
   const handleSurrender = () => {
-    if (mode === 'multi' && gameId && playerId) {
+    if (mode === 'multi' && playerId) {
       setHasSurrendered(true); // Mark that this player has surrendered
-      socket.emit('surrenderGame', { gameId, playerId });
+      // Use roomCode if available (new system), otherwise use gameId (old system)
+      if (roomCode) {
+        socket.emit('surrenderRoom', { roomCode, playerId });
+      } else if (gameId) {
+        socket.emit('surrenderGame', { gameId, playerId });
+      }
       // Close the surrender confirmation modal
       setShowSurrenderConfirm(false);
       // Don't exit immediately - wait for gameOver event like other players
@@ -771,8 +817,8 @@ const GameBoard = ({
                 ? "Waiting for all players to respond to your replay request..." 
                 : "Waiting for all players to respond to the replay request..."}
             </p>
-            {waitingForPlayers.length > 0 && (
-              <p>Still waiting for: {waitingForPlayers.join(', ')}</p>
+            {waitingForPlayersState.length > 0 && (
+              <p>Still waiting for: {waitingForPlayersState.join(', ')}</p>
             )}
             <div style={{ margin: '20px 0' }}>
               <div style={{ 
