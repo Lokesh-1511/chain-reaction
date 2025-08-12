@@ -201,6 +201,83 @@ app.get('/api/game/:id', (req, res) => {
   res.json(game);
 });
 
+// ========== USER PROFILE API ==========
+// In-memory user store (in production, use a database)
+const users = new Map();
+
+// Create or get user profile
+app.post('/api/user/profile', (req, res) => {
+  try {
+    const { username, avatar } = req.body;
+    
+    if (!username || username.trim().length === 0) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const userId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const userProfile = {
+      id: userId,
+      username: username.trim(),
+      avatar: avatar || username.charAt(0).toUpperCase(),
+      createdAt: new Date().toISOString(),
+      gamesPlayed: 0,
+      gamesWon: 0
+    };
+
+    users.set(userId, userProfile);
+    
+    console.log(`👤 User profile created: ${username} (${userId})`);
+    res.json(userProfile);
+    
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    res.status(500).json({ error: 'Failed to create user profile' });
+  }
+});
+
+// Get user profile
+app.get('/api/user/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = users.get(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+    
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    res.status(500).json({ error: 'Failed to get user profile' });
+  }
+});
+
+// Update user stats
+app.put('/api/user/:userId/stats', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { won } = req.body;
+    
+    const user = users.get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    user.gamesPlayed++;
+    if (won) {
+      user.gamesWon++;
+    }
+    
+    users.set(userId, user);
+    res.json(user);
+    
+  } catch (error) {
+    console.error('Error updating user stats:', error);
+    res.status(500).json({ error: 'Failed to update user stats' });
+  }
+});
+
 // Socket.IO: Handle all multiplayer interactions
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);

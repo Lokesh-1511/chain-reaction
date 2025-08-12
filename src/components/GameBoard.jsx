@@ -661,65 +661,64 @@ const GameBoard = ({
       {/* Game Header */}
       <div className="game-header" ref={headerRef}>
         <h1 className="game-title">Chain Reaction</h1>
+      </div>
+
+      {/* Game Controls Section - Above the grid */}
+      <div className="game-controls-section">
+        <div className="current-turn">
+          <div 
+            className="current-turn-indicator" 
+            style={{ backgroundColor: getPlayerColor(currentPlayer) }}
+          ></div>
+          <span>Current Turn: {getPlayerDisplayName(currentPlayer)}</span>
+        </div>
         
-        {/* Multiplayer Info - Only show in multiplayer mode */}
-        {mode === 'multi' && (
-          <div className="multiplayer-info">
-            <div className="game-id-section">
-              <span className="info-label">Game ID:</span>
-              <span className="info-value">{gameId || 'N/A'}</span>
-              <button
-                onClick={handleCopyGameId}
-                className="copy-button"
-              >
-                {copied ? "✓ Copied!" : "📋 Copy"}
-              </button>
-            </div>
-            <div className="player-id-section">
-              <span className="info-label">Player ID:</span>
-              <span className="info-value">{playerId || 'N/A'}</span>
-              {isHost && <span className="host-badge">Host</span>}
-            </div>
-          </div>
-        )}
-        
-        {/* Current Player Display */}
-        <div className="current-player-section">
-          <div className="player-indicator">
-            <span className="player-label">
-              {activePlayers && activePlayers.length === 1 ? "Playing:" : "Current Turn:"}
-            </span>
-            <div className="player-info">
-              <div className={`player-color-indicator player-${currentPlayer}`}></div>
-              <span className="player-name">{getPlayerDisplayName(currentPlayer)}</span>
-            </div>
-          </div>
-          
+        <div className="button-group">
           {/* Show surrender status */}
-          {hasSurrendered && (
-            <div style={{ 
-              backgroundColor: 'rgba(255, 71, 87, 0.2)', 
-              border: '1px solid rgba(255, 71, 87, 0.4)',
-              borderRadius: '15px',
-              padding: '8px 16px',
-              fontSize: '0.9rem',
-              color: '#ffcccb'
-            }}>
+          {hasSurrendered ? (
+            <div className="surrender-status">
               You have surrendered
             </div>
-          )}
-          
-          {/* Surrender Button - Both modes */}
-          {!showModal && !hasSurrendered && (
-            <button
-              onClick={handleSurrenderConfirm}
-              className="surrender-button"
-            >
-              {mode === 'single' ? 'Exit Game' : 'Surrender'}
+          ) : mode === 'multi' ? (
+            <>
+              <button
+                onClick={handleSurrenderConfirm}
+                className="surrender-button"
+              >
+                Surrender
+              </button>
+              <button onClick={handleExit} className="exit-button">
+                Exit Game
+              </button>
+            </>
+          ) : (
+            <button onClick={handleExit} className="exit-button">
+              Exit Game
             </button>
           )}
         </div>
       </div>
+
+      {/* Multiplayer Info - Only show in multiplayer mode */}
+      {mode === 'multi' && (
+        <div className="multiplayer-info">
+          <div className="game-id-section">
+            <span className="info-label">Game ID:</span>
+            <span className="info-value">{gameId || 'N/A'}</span>
+            <button
+              onClick={handleCopyGameId}
+              className="copy-button"
+            >
+              {copied ? "✓ Copied!" : "📋 Copy"}
+            </button>
+          </div>
+          <div className="player-id-section">
+            <span className="info-label">Player ID:</span>
+            <span className="info-value">{playerId || 'N/A'}</span>
+            {isHost && <span className="host-badge">Host</span>}
+          </div>
+        </div>
+      )}
 
       {/* Game Board */}
       <div className="game-board-container">
