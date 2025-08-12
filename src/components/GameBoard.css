@@ -14,6 +14,14 @@
   color: white;
   overflow: auto; /* Allow scrolling when content is larger than viewport */
   gap: 8px; /* Add gap between header and game board */
+  position: relative;
+}
+
+/* Ensure only one profile logo is visible */
+#user-profile-logo {
+  position: absolute !important;
+  top: 20px !important;
+  right: 20px !important;
 }
 
 @keyframes gradientShift {
@@ -30,6 +38,90 @@
   flex-shrink: 0;
   z-index: 10; /* Ensure header stays above game board */
   position: relative;
+}
+
+/* Game Controls Section - Above the grid */
+.game-controls-section {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 40px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 5;
+}
+
+.current-turn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.current-turn-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff4444;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.surrender-status {
+  background-color: rgba(255, 71, 87, 0.2);
+  border: 1px solid rgba(255, 71, 87, 0.4);
+  border-radius: 15px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  color: #ffcccb;
+}
+
+.exit-button {
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(255, 71, 87, 0.3);
+  font-size: 1rem;
+}
+
+.exit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 71, 87, 0.4);
+}
+
+.surrender-button {
+  background: linear-gradient(135deg, #ffa726, #ff9800);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(255, 167, 38, 0.3);
+  font-size: 0.9rem;
+}
+
+.surrender-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 167, 38, 0.4);
 }
 
 .game-title {
@@ -170,7 +262,7 @@
   min-height: 0; /* Allow flex item to shrink */
   overflow: visible; /* Ensure borders aren't clipped */
   padding: 10px; /* Reduced padding to prevent overlap */
-  margin-top: 10px; /* Add top margin for spacing */
+  margin-top: 0; /* Remove top margin to prevent overlap with controls */
 }
 
 .game-board {
@@ -616,4 +708,65 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .game-container {
+    padding: 10px;
+  }
+  
+  .game-title {
+    font-size: 2rem;
+  }
+  
+  .game-controls-section {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .current-turn {
+    font-size: 1rem;
+  }
+  
+  .exit-button {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+  
+  .profile-logo {
+    width: 45px;
+    height: 45px;
+    top: 15px;
+    right: 15px;
+    font-size: 1.1rem;
+  }
+  
+  .multiplayer-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-title {
+    font-size: 1.8rem;
+  }
+  
+  .game-controls-section {
+    padding: 15px;
+  }
+  
+  .button-group {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  
+  .exit-button, .surrender-button {
+    width: 100%;
+    text-align: center;
+  }
 }
