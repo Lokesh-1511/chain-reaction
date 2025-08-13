@@ -206,85 +206,210 @@ const UserProfile = () => {
                 
                 <div className="dashboard-content">
                   <div className="profile-section">
-                    <div className="profile-avatar-large">
-                      {getUsername().charAt(0).toUpperCase()}
-                    </div>
-                    
-                    <div className="profile-details">
-                      {!isEditing ? (
-                        <>
-                          <h3>{getUsername()}</h3>
-                          <p className="email">{user.email}</p>
-                          <p className="bio">{userProfile?.bio || 'No bio added yet'}</p>
-                          <button className="edit-btn" onClick={() => setIsEditing(true)}>
-                            Edit Profile
-                          </button>
-                        </>
-                      ) : (
-                        <div className="edit-form">
-                          <div className="form-group">
-                            <label>Username:</label>
-                            <input
-                              type="text"
-                              name="username"
-                              value={profileFormData.username}
-                              onChange={handleProfileInputChange}
-                              placeholder="Enter username"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Bio:</label>
-                            <textarea
-                              name="bio"
-                              value={profileFormData.bio}
-                              onChange={handleProfileInputChange}
-                              placeholder="Tell us about yourself..."
-                              rows="3"
-                            />
-                          </div>
-                          <div className="edit-actions">
-                            <button 
-                              className="save-btn" 
-                              onClick={handleUpdateProfile}
-                              disabled={loading}
-                            >
-                              {loading ? 'Saving...' : 'Save'}
-                            </button>
-                            <button 
-                              className="cancel-btn" 
-                              onClick={() => setIsEditing(false)}
-                            >
-                              Cancel
-                            </button>
+                    <div className="profile-header">
+                      <div className="profile-avatar-large">
+                        <div className="avatar-ring">
+                          <div className="avatar-inner">
+                            {getUsername().charAt(0).toUpperCase()}
                           </div>
                         </div>
-                      )}
+                        <div className="online-indicator"></div>
+                      </div>
+                      
+                      <div className="profile-info">
+                        <div className="profile-details">
+                          {!isEditing ? (
+                            <>
+                              <h2 className="username">{getUsername()}</h2>
+                              <p className="email">{user.email}</p>
+                              <div className="bio-container">
+                                <p className="bio">{userProfile?.bio || 'Chain Reaction enthusiast 🔥'}</p>
+                              </div>
+                              <div className="profile-badges">
+                                {(userProfile?.gamesWon || 0) > 0 && <span className="badge winner">Winner 🏆</span>}
+                                {(userProfile?.gamesPlayed || 0) > 10 && <span className="badge veteran">Veteran 🎮</span>}
+                                {getWinRate() > 50 && <span className="badge champion">Champion ⭐</span>}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="edit-form">
+                              <div className="form-group">
+                                <label>Username:</label>
+                                <input
+                                  type="text"
+                                  name="username"
+                                  value={profileFormData.username}
+                                  onChange={handleProfileInputChange}
+                                  placeholder="Enter username"
+                                  className="modern-input"
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Bio:</label>
+                                <textarea
+                                  name="bio"
+                                  value={profileFormData.bio}
+                                  onChange={handleProfileInputChange}
+                                  placeholder="Tell us about yourself..."
+                                  rows="3"
+                                  className="modern-textarea"
+                                />
+                              </div>
+                              <div className="edit-actions">
+                                <button 
+                                  className="save-btn" 
+                                  onClick={handleUpdateProfile}
+                                  disabled={loading}
+                                >
+                                  <span className="btn-icon">💾</span>
+                                  {loading ? 'Saving...' : 'Save Changes'}
+                                </button>
+                                <button 
+                                  className="cancel-btn" 
+                                  onClick={() => setIsEditing(false)}
+                                >
+                                  <span className="btn-icon">❌</span>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                    
+                    {!isEditing && (
+                      <div className="profile-actions">
+                        <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                          <span className="btn-icon">✏️</span>
+                          Edit Profile
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="stats-section">
-                    <h3>Game Statistics</h3>
+                    <div className="section-header">
+                      <h3>🎮 Game Statistics</h3>
+                      <div className="section-subtitle">Your gaming journey</div>
+                    </div>
                     <div className="stats-grid">
-                      <div className="stat-card">
-                        <div className="stat-number">{userProfile?.gamesPlayed || 0}</div>
-                        <div className="stat-label">Games Played</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-number">{userProfile?.gamesWon || 0}</div>
-                        <div className="stat-label">Games Won</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-number">{getWinRate()}%</div>
-                        <div className="stat-label">Win Rate</div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="stat-number">
-                          {userProfile?.joinedDate ? 
-                            new Date(userProfile.joinedDate).toLocaleDateString() : 
-                            'Unknown'
-                          }
+                      <div className="stat-card primary">
+                        <div className="stat-icon">🎯</div>
+                        <div className="stat-info">
+                          <div className="stat-number">{userProfile?.gamesPlayed || 0}</div>
+                          <div className="stat-label">Total Games</div>
                         </div>
-                        <div className="stat-label">Member Since</div>
+                        <div className="stat-trend">
+                          {(userProfile?.gamesPlayed || 0) > 5 && <span className="trend-up">↗️</span>}
+                        </div>
+                      </div>
+                      
+                      <div className="stat-card success">
+                        <div className="stat-icon">🏆</div>
+                        <div className="stat-info">
+                          <div className="stat-number">{userProfile?.gamesWon || 0}</div>
+                          <div className="stat-label">Victories</div>
+                        </div>
+                        <div className="stat-progress">
+                          <div 
+                            className="progress-bar" 
+                            style={{ width: `${Math.min((userProfile?.gamesWon || 0) * 10, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <div className="stat-card info">
+                        <div className="stat-icon">📊</div>
+                        <div className="stat-info">
+                          <div className="stat-number">{getWinRate()}%</div>
+                          <div className="stat-label">Win Rate</div>
+                        </div>
+                        <div className="win-rate-indicator">
+                          <div className={`rate-circle ${getWinRate() > 50 ? 'high' : getWinRate() > 25 ? 'medium' : 'low'}`}>
+                            {getWinRate() > 70 ? '🔥' : getWinRate() > 50 ? '💪' : getWinRate() > 25 ? '📈' : '🎯'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="stat-card accent">
+                        <div className="stat-icon">📅</div>
+                        <div className="stat-info">
+                          <div className="stat-number">
+                            {userProfile?.joinedDate ? 
+                              new Date(userProfile.joinedDate).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              }) : 
+                              'Today'
+                            }
+                          </div>
+                          <div className="stat-label">Member Since</div>
+                        </div>
+                        <div className="member-duration">
+                          {userProfile?.joinedDate && (
+                            <span className="duration-text">
+                              {Math.floor((new Date() - new Date(userProfile.joinedDate)) / (1000 * 60 * 60 * 24))} days
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="achievements-section">
+                    <div className="section-header">
+                      <h3>🏅 Achievements</h3>
+                      <div className="section-subtitle">Unlock more by playing!</div>
+                    </div>
+                    <div className="achievements-grid">
+                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 1 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">🎮</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">First Game</div>
+                          <div className="achievement-desc">Play your first game</div>
+                        </div>
+                      </div>
+                      
+                      <div className={`achievement ${(userProfile?.gamesWon || 0) >= 1 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">🏆</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">First Victory</div>
+                          <div className="achievement-desc">Win your first game</div>
+                        </div>
+                      </div>
+                      
+                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 10 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">🔟</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">Dedicated Player</div>
+                          <div className="achievement-desc">Play 10 games</div>
+                        </div>
+                      </div>
+                      
+                      <div className={`achievement ${(userProfile?.gamesWon || 0) >= 5 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">⭐</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">Rising Star</div>
+                          <div className="achievement-desc">Win 5 games</div>
+                        </div>
+                      </div>
+                      
+                      <div className={`achievement ${getWinRate() >= 75 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">👑</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">Champion</div>
+                          <div className="achievement-desc">Achieve 75% win rate</div>
+                        </div>
+                      </div>
+                      
+                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 50 ? 'unlocked' : 'locked'}`}>
+                        <div className="achievement-icon">🎯</div>
+                        <div className="achievement-info">
+                          <div className="achievement-title">Master Player</div>
+                          <div className="achievement-desc">Play 50 games</div>
+                        </div>
                       </div>
                     </div>
                   </div>
