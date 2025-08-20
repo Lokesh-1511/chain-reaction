@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import GridCell from './GridCell';
 import socket from '../services/socket';
 import { getGameState } from '../services/api';
+import { updateGameStats } from '../services/userStats';
 import './GameBoard.css';
 
 const GameBoard = ({ 
@@ -48,6 +49,7 @@ const GameBoard = ({
   const [hasSurrendered, setHasSurrendered] = useState(false);
   const [explodingCells, setExplodingCells] = useState(new Set());
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
+  const [gameStartTime, setGameStartTime] = useState(null);
   const containerRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -55,6 +57,26 @@ const GameBoard = ({
   useEffect(() => {
     console.log(`🖥️ Modal states: showModal=${showModal}, replayRequested=${replayRequested}, showReplayWaiting=${showReplayWaiting}, hasResponded=${hasResponded}`);
   }, [showModal, replayRequested, showReplayWaiting, hasResponded]);
+
+  // Handle winner state changes and update stats
+  useEffect(() => {
+    if (winner && gameStartTime) {
+      const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000); // Duration in minutes
+      const gameData = {
+        winner,
+        playerId,
+        gridSize: row * col,
+        gameDuration,
+        gameMode: mode,
+        totalPlayers: players,
+        roomCode: roomCode || gameId
+      };
+      
+      updateGameStats(gameData).catch(error => {
+        console.error('Failed to update game stats:', error);
+      });
+    }
+  }, [winner, gameStartTime, playerId, row, col, mode, players, roomCode, gameId]);
 
   // Helper function to get player display name
   const getPlayerDisplayName = (playerId) => {
@@ -182,6 +204,9 @@ const GameBoard = ({
   useEffect(() => {
     if (!gameId) return;
     
+    // Set game start time when component mounts
+    setGameStartTime(Date.now());
+    
     // For singleplayer, only initialize the game state locally
     if (mode === 'single') {
       const initialState = {
@@ -284,6 +309,24 @@ const GameBoard = ({
       }
       setWinner(winner);
       setShowModal(true);
+      
+      // Update user stats
+      if (gameStartTime) {
+        const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000); // Duration in minutes
+        const gameData = {
+          winner,
+          playerId,
+          gridSize: row * col,
+          gameDuration,
+          gameMode: mode,
+          totalPlayers: players,
+          roomCode: roomCode || gameId
+        };
+        
+        updateGameStats(gameData).catch(error => {
+          console.error('Failed to update game stats:', error);
+        });
+      }
     });
 
     // Listen for replay-related events

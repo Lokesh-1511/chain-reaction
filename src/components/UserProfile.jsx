@@ -8,6 +8,14 @@ import {
   updateProfile 
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { 
+  getUserProfile, 
+  updateUserProfile, 
+  getRecentGames, 
+  getUserRank, 
+  getLeaderboard,
+  updateGameStats as updateGameStatsService
+} from '../services/userStats';
 import './UserProfile.css';
 
 const UserProfile = () => {
@@ -29,6 +37,10 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [recentGames, setRecentGames] = useState([]);
+  const [userRank, setUserRank] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [activeTab, setActiveTab] = useState('stats'); // 'stats', 'history', 'leaderboard'
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -45,15 +57,25 @@ const UserProfile = () => {
 
   const loadUserProfile = async (uid) => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        const profileData = userDoc.data();
+      const profileData = await getUserProfile(uid);
+      if (profileData) {
         setUserProfile(profileData);
         setProfileFormData({
           username: profileData.username || '',
           bio: profileData.bio || '',
           avatar: profileData.avatar || ''
         });
+        
+        // Load additional data
+        const [recentGamesData, rank, leaderboardData] = await Promise.all([
+          getRecentGames(uid, 5),
+          getUserRank(uid, 'wins'),
+          getLeaderboard('wins', 10)
+        ]);
+        
+        setRecentGames(recentGamesData);
+        setUserRank(rank);
+        setLeaderboard(leaderboardData);
       } else {
         // Create default profile if it doesn't exist
         const defaultProfile = {
@@ -62,7 +84,14 @@ const UserProfile = () => {
           avatar: '',
           gamesPlayed: 0,
           gamesWon: 0,
-          joinedDate: new Date().toISOString()
+          totalScore: 0,
+          currentStreak: 0,
+          bestStreak: 0,
+          joinedDate: new Date().toISOString(),
+          lastActiveDate: new Date().toISOString(),
+          totalPlayTime: 0,
+          favoriteGridSize: '5x5',
+          achievements: []
         };
         await setDoc(doc(db, 'users', uid), defaultProfile);
         setUserProfile(defaultProfile);
@@ -74,6 +103,7 @@ const UserProfile = () => {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      setError('Failed to load profile data');
     }
   };
 
@@ -154,8 +184,8 @@ const UserProfile = () => {
         displayName: profileFormData.username
       });
 
-      // Update Firestore document
-      await updateDoc(doc(db, 'users', user.uid), {
+      // Update Firestore document using our service
+      await updateUserProfile(user.uid, {
         username: profileFormData.username,
         bio: profileFormData.bio,
         avatar: profileFormData.avatar
@@ -178,6 +208,95 @@ const UserProfile = () => {
   const getWinRate = () => {
     if (!userProfile || userProfile.gamesPlayed === 0) return 0;
     return Math.round((userProfile.gamesWon / userProfile.gamesPlayed) * 100);
+  };
+
+  const getAverageScore = () => {
+    if (!userProfile || userProfile.gamesPlayed === 0) return 0;
+    return Math.round((userProfile.totalScore || 0) / userProfile.gamesPlayed);
+  };
+
+  const formatPlayTime = (minutes) => {
+    if (!minutes || minutes < 60) return `${minutes || 0}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const formatGameResult = (game) => {
+    const won = game.winner === game.playerId;
+    return {
+      result: won ? 'Won' : 'Lost',
+      resultClass: won ? 'win' : 'loss',
+      icon: won ? '🏆' : '❌'
+    };
+  };
+
+  const getAchievements = () => {
+    return [
+      {
+        id: 'first_game',
+        title: 'First Game',
+        description: 'Play your first game',
+        icon: '🎮',
+        unlocked: (userProfile?.gamesPlayed || 0) >= 1
+      },
+      {
+        id: 'first_victory',
+        title: 'First Victory',
+        description: 'Win your first game',
+        icon: '🏆',
+        unlocked: (userProfile?.gamesWon || 0) >= 1
+      },
+      {
+        id: 'dedicated_player',
+        title: 'Dedicated Player',
+        description: 'Play 10 games',
+        icon: '🔟',
+        unlocked: (userProfile?.gamesPlayed || 0) >= 10
+      },
+      {
+        id: 'rising_star',
+        title: 'Rising Star',
+        description: 'Win 5 games',
+        icon: '⭐',
+        unlocked: (userProfile?.gamesWon || 0) >= 5
+      },
+      {
+        id: 'champion',
+        title: 'Champion',
+        description: 'Achieve 75% win rate with 10+ games',
+        icon: '👑',
+        unlocked: (userProfile?.gamesPlayed || 0) >= 10 && getWinRate() >= 75
+      },
+      {
+        id: 'master_player',
+        title: 'Master Player',
+        description: 'Play 50 games',
+        icon: '🎯',
+        unlocked: (userProfile?.gamesPlayed || 0) >= 50
+      },
+      {
+        id: 'streak_master',
+        title: 'Streak Master',
+        description: 'Achieve a 5-game win streak',
+        icon: '🔥',
+        unlocked: (userProfile?.bestStreak || 0) >= 5
+      },
+      {
+        id: 'legendary',
+        title: 'Legendary',
+        description: 'Win 25 games',
+        icon: '👑',
+        unlocked: (userProfile?.gamesWon || 0) >= 25
+      },
+      {
+        id: 'score_hunter',
+        title: 'Score Hunter',
+        description: 'Reach 5000 total points',
+        icon: '💎',
+        unlocked: (userProfile?.totalScore || 0) >= 5000
+      }
+    ];
   };
 
   const toggleMode = () => {
@@ -288,129 +407,246 @@ const UserProfile = () => {
                     )}
                   </div>
                   
-                  <div className="stats-section">
-                    <div className="section-header">
-                      <h3>🎮 Game Statistics</h3>
-                      <div className="section-subtitle">Your gaming journey</div>
-                    </div>
-                    <div className="stats-grid">
-                      <div className="stat-card primary">
-                        <div className="stat-icon">🎯</div>
-                        <div className="stat-info">
-                          <div className="stat-number">{userProfile?.gamesPlayed || 0}</div>
-                          <div className="stat-label">Total Games</div>
-                        </div>
-                        <div className="stat-trend">
-                          {(userProfile?.gamesPlayed || 0) > 5 && <span className="trend-up">↗️</span>}
-                        </div>
-                      </div>
-                      
-                      <div className="stat-card success">
-                        <div className="stat-icon">🏆</div>
-                        <div className="stat-info">
-                          <div className="stat-number">{userProfile?.gamesWon || 0}</div>
-                          <div className="stat-label">Victories</div>
-                        </div>
-                        <div className="stat-progress">
-                          <div 
-                            className="progress-bar" 
-                            style={{ width: `${Math.min((userProfile?.gamesWon || 0) * 10, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      <div className="stat-card info">
-                        <div className="stat-icon">📊</div>
-                        <div className="stat-info">
-                          <div className="stat-number">{getWinRate()}%</div>
-                          <div className="stat-label">Win Rate</div>
-                        </div>
-                        <div className="win-rate-indicator">
-                          <div className={`rate-circle ${getWinRate() > 50 ? 'high' : getWinRate() > 25 ? 'medium' : 'low'}`}>
-                            {getWinRate() > 70 ? '🔥' : getWinRate() > 50 ? '💪' : getWinRate() > 25 ? '📈' : '🎯'}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="stat-card accent">
-                        <div className="stat-icon">📅</div>
-                        <div className="stat-info">
-                          <div className="stat-number">
-                            {userProfile?.joinedDate ? 
-                              new Date(userProfile.joinedDate).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              }) : 
-                              'Today'
-                            }
-                          </div>
-                          <div className="stat-label">Member Since</div>
-                        </div>
-                        <div className="member-duration">
-                          {userProfile?.joinedDate && (
-                            <span className="duration-text">
-                              {Math.floor((new Date() - new Date(userProfile.joinedDate)) / (1000 * 60 * 60 * 24))} days
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                  {/* Tab Navigation */}
+                  <div className="dashboard-tabs">
+                    <button 
+                      className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('stats')}
+                    >
+                      📊 Statistics
+                    </button>
+                    <button 
+                      className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('history')}
+                    >
+                      📜 Recent Games
+                    </button>
+                    <button 
+                      className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('leaderboard')}
+                    >
+                      🏅 Leaderboard
+                    </button>
                   </div>
+
+                  {/* Statistics Tab */}
+                  {activeTab === 'stats' && (
+                    <div className="stats-section">
+                      <div className="section-header">
+                        <h3>🎮 Game Statistics</h3>
+                        <div className="section-subtitle">Your gaming journey</div>
+                        {userRank && (
+                          <div className="rank-badge">
+                            Global Rank: #{userRank}
+                          </div>
+                        )}
+                      </div>
+                      <div className="stats-grid">
+                        <div className="stat-card primary">
+                          <div className="stat-icon">🎯</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{userProfile?.gamesPlayed || 0}</div>
+                            <div className="stat-label">Total Games</div>
+                          </div>
+                          <div className="stat-trend">
+                            {(userProfile?.gamesPlayed || 0) > 5 && <span className="trend-up">↗️</span>}
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card success">
+                          <div className="stat-icon">🏆</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{userProfile?.gamesWon || 0}</div>
+                            <div className="stat-label">Victories</div>
+                          </div>
+                          <div className="stat-progress">
+                            <div 
+                              className="progress-bar" 
+                              style={{ width: `${Math.min((userProfile?.gamesWon || 0) * 10, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card info">
+                          <div className="stat-icon">📊</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{getWinRate()}%</div>
+                            <div className="stat-label">Win Rate</div>
+                          </div>
+                          <div className="win-rate-indicator">
+                            <div className={`rate-circle ${getWinRate() > 50 ? 'high' : getWinRate() > 25 ? 'medium' : 'low'}`}>
+                              {getWinRate() > 70 ? '🔥' : getWinRate() > 50 ? '💪' : getWinRate() > 25 ? '📈' : '🎯'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card warning">
+                          <div className="stat-icon">💎</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{userProfile?.totalScore || 0}</div>
+                            <div className="stat-label">Total Score</div>
+                          </div>
+                          <div className="score-info">
+                            Avg: {getAverageScore()}
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card accent">
+                          <div className="stat-icon">🔥</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{userProfile?.currentStreak || 0}</div>
+                            <div className="stat-label">Current Streak</div>
+                          </div>
+                          <div className="streak-info">
+                            Best: {userProfile?.bestStreak || 0}
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card neutral">
+                          <div className="stat-icon">⏱️</div>
+                          <div className="stat-info">
+                            <div className="stat-number">{formatPlayTime(userProfile?.totalPlayTime)}</div>
+                            <div className="stat-label">Play Time</div>
+                          </div>
+                          <div className="time-info">
+                            Favorite: {userProfile?.favoriteGridSize || '5x5'}
+                          </div>
+                        </div>
+                        
+                        <div className="stat-card accent">
+                          <div className="stat-icon">📅</div>
+                          <div className="stat-info">
+                            <div className="stat-number">
+                              {userProfile?.joinedDate ? 
+                                new Date(userProfile.joinedDate).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                }) : 
+                                'Today'
+                              }
+                            </div>
+                            <div className="stat-label">Member Since</div>
+                          </div>
+                          <div className="member-duration">
+                            {userProfile?.joinedDate && (
+                              <span className="duration-text">
+                                {Math.floor((new Date() - new Date(userProfile.joinedDate)) / (1000 * 60 * 60 * 24))} days
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recent Games Tab */}
+                  {activeTab === 'history' && (
+                    <div className="history-section">
+                      <div className="section-header">
+                        <h3>📜 Recent Games</h3>
+                        <div className="section-subtitle">Your latest matches</div>
+                      </div>
+                      <div className="games-list">
+                        {recentGames.length > 0 ? (
+                          recentGames.map((game, index) => {
+                            const result = formatGameResult(game);
+                            return (
+                              <div key={game.id || index} className={`game-item ${result.resultClass}`}>
+                                <div className="game-result">
+                                  <span className="result-icon">{result.icon}</span>
+                                  <span className="result-text">{result.result}</span>
+                                </div>
+                                <div className="game-details">
+                                  <div className="game-mode">
+                                    {game.gameMode === 'single' ? '🤖 vs AI' : '👥 Multiplayer'}
+                                  </div>
+                                  <div className="game-grid">
+                                    Grid: {Math.sqrt(game.gridSize || 25)}x{Math.sqrt(game.gridSize || 25)}
+                                  </div>
+                                  <div className="game-score">
+                                    +{game.score || 0} pts
+                                  </div>
+                                </div>
+                                <div className="game-time">
+                                  {new Date(game.timestamp).toLocaleDateString()}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="no-games">
+                            <div className="no-games-icon">🎮</div>
+                            <div className="no-games-text">No games played yet</div>
+                            <div className="no-games-subtitle">Start playing to see your game history!</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Leaderboard Tab */}
+                  {activeTab === 'leaderboard' && (
+                    <div className="leaderboard-section">
+                      <div className="section-header">
+                        <h3>🏅 Leaderboard</h3>
+                        <div className="section-subtitle">Top players by wins</div>
+                      </div>
+                      <div className="leaderboard-list">
+                        {leaderboard.map((player, index) => (
+                          <div 
+                            key={player.uid} 
+                            className={`leaderboard-item ${player.uid === user?.uid ? 'current-user' : ''}`}
+                          >
+                            <div className="rank">
+                              <span className="rank-number">#{index + 1}</span>
+                              {index < 3 && (
+                                <span className="rank-medal">
+                                  {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="player-info">
+                              <div className="player-name">
+                                {player.username || 'Anonymous'}
+                                {player.uid === user?.uid && <span className="you-badge">You</span>}
+                              </div>
+                              <div className="player-stats">
+                                {player.gamesWon} wins • {player.gamesPlayed} games
+                              </div>
+                            </div>
+                            <div className="player-score">
+                              {player.totalScore || 0} pts
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="achievements-section">
                     <div className="section-header">
                       <h3>🏅 Achievements</h3>
-                      <div className="section-subtitle">Unlock more by playing!</div>
+                      <div className="section-subtitle">
+                        {getAchievements().filter(a => a.unlocked).length} of {getAchievements().length} unlocked
+                      </div>
                     </div>
                     <div className="achievements-grid">
-                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 1 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">🎮</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">First Game</div>
-                          <div className="achievement-desc">Play your first game</div>
+                      {getAchievements().map(achievement => (
+                        <div 
+                          key={achievement.id} 
+                          className={`achievement ${achievement.unlocked ? 'unlocked' : 'locked'}`}
+                        >
+                          <div className="achievement-icon">{achievement.icon}</div>
+                          <div className="achievement-info">
+                            <div className="achievement-title">{achievement.title}</div>
+                            <div className="achievement-desc">{achievement.description}</div>
+                          </div>
+                          {achievement.unlocked && (
+                            <div className="achievement-check">✅</div>
+                          )}
                         </div>
-                      </div>
-                      
-                      <div className={`achievement ${(userProfile?.gamesWon || 0) >= 1 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">🏆</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">First Victory</div>
-                          <div className="achievement-desc">Win your first game</div>
-                        </div>
-                      </div>
-                      
-                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 10 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">🔟</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">Dedicated Player</div>
-                          <div className="achievement-desc">Play 10 games</div>
-                        </div>
-                      </div>
-                      
-                      <div className={`achievement ${(userProfile?.gamesWon || 0) >= 5 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">⭐</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">Rising Star</div>
-                          <div className="achievement-desc">Win 5 games</div>
-                        </div>
-                      </div>
-                      
-                      <div className={`achievement ${getWinRate() >= 75 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">👑</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">Champion</div>
-                          <div className="achievement-desc">Achieve 75% win rate</div>
-                        </div>
-                      </div>
-                      
-                      <div className={`achievement ${(userProfile?.gamesPlayed || 0) >= 50 ? 'unlocked' : 'locked'}`}>
-                        <div className="achievement-icon">🎯</div>
-                        <div className="achievement-info">
-                          <div className="achievement-title">Master Player</div>
-                          <div className="achievement-desc">Play 50 games</div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                   
@@ -514,23 +750,29 @@ export const getCurrentUsername = () => {
   return currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
 };
 
-// Export function to update game stats
-export const updateGameStats = async (won = false) => {
+// Export function to update game stats (legacy compatibility)
+export const updateGameStatsLegacy = async (won = false) => {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
   
   try {
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    if (userDoc.exists()) {
-      const currentStats = userDoc.data();
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        gamesPlayed: (currentStats.gamesPlayed || 0) + 1,
-        gamesWon: won ? (currentStats.gamesWon || 0) + 1 : (currentStats.gamesWon || 0)
-      });
-    }
+    const gameData = {
+      winner: won ? 1 : 2, // Simplified winner logic
+      playerId: 1,
+      gridSize: 25, // Default 5x5 grid
+      gameDuration: 5, // Default 5 minutes
+      gameMode: 'single',
+      totalPlayers: 2,
+      roomCode: 'legacy'
+    };
+    
+    await updateGameStatsService(gameData);
   } catch (error) {
     console.error('Error updating game stats:', error);
   }
 };
+
+// Backward compatibility
+export const updateGameStats = updateGameStatsLegacy;
 
 export default UserProfile;
