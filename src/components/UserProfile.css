@@ -1774,3 +1774,285 @@
     font-size: 0.75rem !important;
   }
 }
+
+/* Tab Navigation */
+.dashboard-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: #4fd1c7;
+  background: rgba(79, 209, 199, 0.1);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4fd1c7;
+}
+
+/* Enhanced Stats */
+.rank-badge {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #2d3748;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.stat-card.warning {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2));
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.stat-card.neutral {
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.2), rgba(107, 114, 128, 0.2));
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.score-info, .streak-info, .time-info {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+}
+
+/* Recent Games */
+.history-section, .leaderboard-section {
+  margin: 20px 0;
+}
+
+.games-list {
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.game-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.game-item.win {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.game-item.loss {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.game-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.result-icon {
+  font-size: 1.2rem;
+}
+
+.result-text {
+  font-weight: bold;
+}
+
+.game-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  margin: 0 16px;
+}
+
+.game-mode, .game-grid, .game-score {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.game-time {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.no-games {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.no-games-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.no-games-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.no-games-subtitle {
+  font-size: 0.9rem;
+}
+
+/* Leaderboard */
+.leaderboard-list {
+  max-height: 400px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin: 8px 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.leaderboard-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.leaderboard-item.current-user {
+  background: rgba(79, 209, 199, 0.2);
+  border: 1px solid rgba(79, 209, 199, 0.3);
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 60px;
+}
+
+.rank-number {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.rank-medal {
+  font-size: 1.2rem;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.you-badge {
+  background: #4fd1c7;
+  color: #2d3748;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.player-stats {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+}
+
+.player-score {
+  font-weight: bold;
+  color: #ffd700;
+}
+
+/* Enhanced Achievements */
+.achievement-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1rem;
+}
+
+.achievement.unlocked .achievement-check {
+  display: block;
+}
+
+.achievement.locked .achievement-check {
+  display: none;
+}
+
+/* Responsive improvements for tabs */
+@media (max-width: 768px) {
+  .dashboard-tabs {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .tab-btn {
+    border-radius: 8px;
+    margin: 2px 0;
+  }
+  
+  .tab-btn.active::after {
+    display: none;
+  }
+  
+  .games-list, .leaderboard-list {
+    max-height: 250px;
+  }
+  
+  .game-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .game-details {
+    margin: 0;
+    width: 100%;
+  }
+}
