@@ -39,11 +39,18 @@ export const initializeUserProfile = async (uid, username) => {
 
 /**
  * Update game statistics after a game completion
+ * Only tracks multiplayer games to prevent score manipulation
  */
 export const updateGameStats = async (gameData) => {
   const currentUser = auth.currentUser;
   if (!currentUser) {
     console.warn('No authenticated user to update stats for');
+    return;
+  }
+  
+  // Only track multiplayer games for competitive integrity
+  if (gameData.gameMode !== 'multi') {
+    console.log('📊 Single-player game not tracked in stats (prevents score manipulation)');
     return;
   }
   

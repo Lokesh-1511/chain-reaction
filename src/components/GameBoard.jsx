@@ -60,7 +60,8 @@ const GameBoard = ({
 
   // Handle winner state changes and update stats
   useEffect(() => {
-    if (winner && gameStartTime) {
+    if (winner && gameStartTime && mode === 'multi') {
+      // Only track stats for multiplayer games to prevent cheating
       const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000); // Duration in minutes
       const gameData = {
         winner,
@@ -75,6 +76,8 @@ const GameBoard = ({
       updateGameStats(gameData).catch(error => {
         console.error('Failed to update game stats:', error);
       });
+    } else if (winner && mode === 'single') {
+      console.log('🎮 Single-player game completed - stats not tracked to prevent score manipulation');
     }
   }, [winner, gameStartTime, playerId, row, col, mode, players, roomCode, gameId]);
 
@@ -310,8 +313,8 @@ const GameBoard = ({
       setWinner(winner);
       setShowModal(true);
       
-      // Update user stats
-      if (gameStartTime) {
+      // Update user stats only for multiplayer games
+      if (gameStartTime && mode === 'multi') {
         const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000); // Duration in minutes
         const gameData = {
           winner,
