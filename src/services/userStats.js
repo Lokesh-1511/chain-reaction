@@ -52,8 +52,9 @@ export const updateGameStats = async (gameData) => {
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
-      console.warn('User profile does not exist');
-      return;
+      console.warn('User profile does not exist, creating default profile first');
+      await initializeUserProfile(currentUser.uid, currentUser.displayName || 'Player');
+      return updateGameStats(gameData); // Retry after creating profile
     }
     
     const currentStats = userDoc.data();
@@ -102,6 +103,14 @@ export const updateGameStats = async (gameData) => {
     return updatedStats;
   } catch (error) {
     console.error('Error updating game stats:', error);
+    
+    // More user-friendly error handling
+    if (error.code === 'permission-denied') {
+      console.warn('Permission denied when updating stats. User may need to re-authenticate.');
+    } else if (error.code === 'unavailable') {
+      console.warn('Firebase service unavailable. Stats update will be retried later.');
+    }
+    
     throw error;
   }
 };

@@ -1,7 +1,11 @@
 {
   "name": "chain-reaction",
+  "description": "Chain Reaction - An explosive multiplayer strategy game built with React",
+  "version": "1.0.0",
+  "author": "Lokesh-1511",
+  "license": "MIT",
+  "keywords": ["chain-reaction", "game", "multiplayer", "strategy", "react", "firebase"],
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

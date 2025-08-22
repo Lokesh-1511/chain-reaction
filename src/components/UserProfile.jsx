@@ -103,7 +103,17 @@ const UserProfile = () => {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
-      setError('Failed to load profile data');
+      
+      // More specific error messages based on error type
+      if (error.code === 'permission-denied') {
+        setError('Please log in to access your profile data');
+      } else if (error.code === 'unavailable') {
+        setError('Firebase service is temporarily unavailable. Please try again later.');
+      } else if (error.code === 'failed-precondition') {
+        setError('Database rules may be updating. Please try again in a moment.');
+      } else {
+        setError('Failed to load profile data. Please check your internet connection.');
+      }
     }
   };
 
