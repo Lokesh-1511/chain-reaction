@@ -1817,6 +1817,17 @@
 }
 
 /* Enhanced Stats */
+.stats-note {
+  background: rgba(79, 209, 199, 0.1);
+  color: #4fd1c7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin: 8px 0;
+  border: 1px solid rgba(79, 209, 199, 0.2);
+  text-align: center;
+}
+
 .rank-badge {
   background: linear-gradient(135deg, #ffd700, #ffed4e);
   color: #2d3748;

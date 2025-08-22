@@ -39,6 +39,7 @@ export const initializeUserProfile = async (uid, username) => {
 
 /**
  * Update game statistics after a game completion
+ * Only tracks multiplayer games to prevent score manipulation
  */
 export const updateGameStats = async (gameData) => {
   const currentUser = auth.currentUser;
@@ -47,13 +48,20 @@ export const updateGameStats = async (gameData) => {
     return;
   }
   
+  // Only track multiplayer games for competitive integrity
+  if (gameData.gameMode !== 'multi') {
+    console.log('📊 Single-player game not tracked in stats (prevents score manipulation)');
+    return;
+  }
+  
   try {
     const userRef = doc(db, 'users', currentUser.uid);
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
-      console.warn('User profile does not exist');
-      return;
+      console.warn('User profile does not exist, creating default profile first');
+      await initializeUserProfile(currentUser.uid, currentUser.displayName || 'Player');
+      return updateGameStats(gameData); // Retry after creating profile
     }
     
     const currentStats = userDoc.data();
@@ -102,6 +110,14 @@ export const updateGameStats = async (gameData) => {
     return updatedStats;
   } catch (error) {
     console.error('Error updating game stats:', error);
+    
+    // More user-friendly error handling
+    if (error.code === 'permission-denied') {
+      console.warn('Permission denied when updating stats. User may need to re-authenticate.');
+    } else if (error.code === 'unavailable') {
+      console.warn('Firebase service unavailable. Stats update will be retried later.');
+    }
+    
     throw error;
   }
 };

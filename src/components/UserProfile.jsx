@@ -103,7 +103,17 @@ const UserProfile = () => {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
-      setError('Failed to load profile data');
+      
+      // More specific error messages based on error type
+      if (error.code === 'permission-denied') {
+        setError('Please log in to access your profile data');
+      } else if (error.code === 'unavailable') {
+        setError('Firebase service is temporarily unavailable. Please try again later.');
+      } else if (error.code === 'failed-precondition') {
+        setError('Database rules may be updating. Please try again in a moment.');
+      } else {
+        setError('Failed to load profile data. Please check your internet connection.');
+      }
     }
   };
 
@@ -434,7 +444,10 @@ const UserProfile = () => {
                     <div className="stats-section">
                       <div className="section-header">
                         <h3>🎮 Game Statistics</h3>
-                        <div className="section-subtitle">Your gaming journey</div>
+                        <div className="section-subtitle">Your multiplayer gaming journey</div>
+                        <div className="stats-note">
+                          📊 Only multiplayer games count towards statistics for competitive integrity
+                        </div>
                         {userRank && (
                           <div className="rank-badge">
                             Global Rank: #{userRank}
@@ -545,7 +558,10 @@ const UserProfile = () => {
                     <div className="history-section">
                       <div className="section-header">
                         <h3>📜 Recent Games</h3>
-                        <div className="section-subtitle">Your latest matches</div>
+                        <div className="section-subtitle">Your latest multiplayer matches</div>
+                        <div className="stats-note">
+                          Only multiplayer games are shown (single-player games don't affect stats)
+                        </div>
                       </div>
                       <div className="games-list">
                         {recentGames.length > 0 ? (
@@ -751,25 +767,13 @@ export const getCurrentUsername = () => {
 };
 
 // Export function to update game stats (legacy compatibility)
+// Only for multiplayer games to prevent score manipulation
 export const updateGameStatsLegacy = async (won = false) => {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
+  console.warn('⚠️ Legacy updateGameStats called - single-player games are not tracked for competitive integrity');
+  console.log('💡 Only multiplayer games count towards statistics to prevent score manipulation');
   
-  try {
-    const gameData = {
-      winner: won ? 1 : 2, // Simplified winner logic
-      playerId: 1,
-      gridSize: 25, // Default 5x5 grid
-      gameDuration: 5, // Default 5 minutes
-      gameMode: 'single',
-      totalPlayers: 2,
-      roomCode: 'legacy'
-    };
-    
-    await updateGameStatsService(gameData);
-  } catch (error) {
-    console.error('Error updating game stats:', error);
-  }
+  // Don't update stats for legacy calls (likely single-player)
+  return;
 };
 
 // Backward compatibility
