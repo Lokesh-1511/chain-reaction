@@ -50,8 +50,6 @@ const GameBoard = ({
   const [explodingCells, setExplodingCells] = useState(new Set());
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const [gameStartTime, setGameStartTime] = useState(null);
-  const containerRef = useRef(null);
-  const headerRef = useRef(null);
 
   // Debug logging for modal states
   useEffect(() => {
@@ -176,30 +174,48 @@ const GameBoard = ({
 
   useEffect(() => {
     const calculateCellSize = () => {
-      if (containerRef.current && headerRef.current) {
-        const containerHeight = containerRef.current.offsetHeight;
-        const headerHeight = headerRef.current.offsetHeight;
-        const availableHeight = containerHeight - headerHeight;
-        const containerWidth = containerRef.current.offsetWidth;
-        const gap = 6; // Match the gap in the grid
-        const padding = 50; // 25px padding on each side
-        const margin = 120; // Increased margin to prevent overlap with header
-
-        // Calculate cell size based on available container width and height
-        const sizeByWidth = (containerWidth - padding - 40) / col - gap; // Account for padding and margins
-        const sizeByHeight = (availableHeight - padding - margin) / row - gap;
-
-        // Use the smaller of the two to ensure it fits both ways, with a min of 30 and max of 55
-        setCellSize(Math.floor(Math.min(Math.max(sizeByWidth, sizeByHeight, 30), 55)));
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Account for fixed controls height (varies by screen size)
+      let controlsHeight = 80; // Default desktop
+      if (viewportWidth <= 480) {
+        controlsHeight = 100;
+      } else if (viewportWidth <= 768) {
+        controlsHeight = 90;
       }
+      
+      // Available space for the game board
+      const availableWidth = viewportWidth - 40; // 20px padding on each side
+      const availableHeight = viewportHeight - controlsHeight - 40; // Controls height + padding
+      
+      // Grid layout calculations
+      const gap = 6; // Gap between cells
+      const padding = 50; // Game board internal padding (25px * 2)
+      
+      // Use backend state for dimensions if available
+      const gridRows = gameState?.row || row;
+      const gridCols = gameState?.col || col;
+      
+      // Calculate maximum cell size that fits in available space
+      const maxCellWidth = (availableWidth - padding - (gap * (gridCols - 1))) / gridCols;
+      const maxCellHeight = (availableHeight - padding - (gap * (gridRows - 1))) / gridRows;
+      
+      // Use the smaller dimension to ensure the grid fits completely
+      const optimalCellSize = Math.floor(Math.min(maxCellWidth, maxCellHeight));
+      
+      // Set bounds: minimum 25px for very large grids, maximum 70px for small grids
+      const finalCellSize = Math.max(25, Math.min(optimalCellSize, 70));
+      
+      setCellSize(finalCellSize);
     };
 
-    // Use a timeout to ensure layout is stable before calculating
-    const timer = setTimeout(calculateCellSize, 0);
+    // Calculate immediately and on window resize
+    calculateCellSize();
     window.addEventListener('resize', calculateCellSize);
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('resize', calculateCellSize);
     };
   }, [row, col, gameState]);
@@ -657,7 +673,7 @@ const GameBoard = ({
   const displayCol = gameState?.col || col;
 
   return (
-    <div className="game-container" ref={containerRef}>
+    <div className="game-container">
       {/* Waiting Screen for Multiplayer */}
       {mode === 'multi' && waitingForPlayers && (
         <div className="waiting-overlay">

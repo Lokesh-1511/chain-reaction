@@ -250,7 +250,7 @@ function Menu({ onPageChange }) {
                 <div className="multiplayer-boxes">
                   {/* Join Game Box */}
                   <div className="join-game-box">
-                    <h3 className="box-title">Join Existing Game</h3>
+                    <h3 className="box-title">Join Existing Game / Click start to Host</h3>
                     <div className="join-input-group">
                       <input
                         className="join-input"

@@ -303,7 +303,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: auto;
+  overflow: hidden; /* Prevent scrolling */
   padding: 10px;
   box-sizing: border-box;
 }
@@ -313,34 +313,13 @@
   transition: all 0.3s ease;
   flex-shrink: 0;
   margin: 0 auto; /* Center horizontally */
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .game-board:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Surrender Button */
-.surrender-button {
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  background: linear-gradient(45deg, #ff4757, #ff3838);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
-}
-
-.surrender-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
-}
-
-.surrender-button:active {
-  transform: translateY(0);
 }
 
 /* Player Colors */
@@ -363,6 +342,16 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .game-controls-section {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .game-board-container {
+    top: 90px; /* Adjust for mobile controls height */
+    padding: 8px;
+  }
+  
   .game-container {
     padding: 8px;
     gap: 6px;
@@ -424,6 +413,16 @@ body {
 }
 
 @media (max-width: 480px) {
+  .game-controls-section {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  
+  .game-board-container {
+    top: 100px; /* Adjust for small mobile screens */
+    padding: 5px;
+  }
+  
   .game-container {
     padding: 5px;
     gap: 4px;
