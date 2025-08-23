@@ -12,7 +12,7 @@ const boardSizes = {
   big: { row: 15, col: 10 },
 };
 
-function Menu() {
+function Menu({ onPageChange }) {
   const [page, setPage] = useState("menu");
   const [size, setSize] = useState("small");
   const [row, setRow] = useState(boardSizes.small.row);
@@ -52,6 +52,13 @@ function Menu() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Notify parent when page changes
+  useEffect(() => {
+    if (onPageChange) {
+      onPageChange(page);
+    }
+  }, [page, onPageChange]);
+
   const handleSizeChange = (e) => {
     const newSize = e.target.value;
     setSize(newSize);
@@ -67,14 +74,6 @@ function Menu() {
     setError("");
     // Clear gameId for both modes - backend will generate proper room codes
     setGameId("");
-  };
-
-  const handleCopyGameId = () => {
-    if (gameId) {
-      navigator.clipboard.writeText(gameId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    }
   };
 
   const handleExit = () => {
@@ -249,24 +248,6 @@ function Menu() {
             {mode === 'multi' && (
               <div className="multiplayer-section">
                 <div className="multiplayer-boxes">
-                  {/* Share Game ID Box */}
-                  <div className="share-game-box">
-                    <h3 className="box-title">🔗 Share Game ID</h3>
-                    <div className="game-id-display">
-                      <span className="game-id-text">{gameId || 'Start game to get ID'}</span>
-                      <button
-                        onClick={handleCopyGameId}
-                        className="copy-id-button"
-                        disabled={!gameId}
-                      >
-                        {copied ? "✅ Copied!" : "📋 Copy"}
-                      </button>
-                    </div>
-                    <p className="box-instruction">
-                      {gameId ? 'Share this ID with friends to join!' : 'Start a game to generate a shareable ID'}
-                    </p>
-                  </div>
-
                   {/* Join Game Box */}
                   <div className="join-game-box">
                     <h3 className="box-title">Join Existing Game</h3>

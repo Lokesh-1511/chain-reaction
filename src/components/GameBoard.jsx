@@ -696,10 +696,7 @@ const GameBoard = ({
         </div>
       )}
 
-      {/* Game Header */}
-      <div className="game-header" ref={headerRef}>
-        <h1 className="game-title">Chain Reaction</h1>
-      </div>
+      {/* Game Header - Hidden during gameplay */}
 
       {/* Game Controls Section - Above the grid */}
       <div className="game-controls-section">
