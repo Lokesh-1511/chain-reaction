@@ -1,19 +1,16 @@
 /* Game Container */
 .game-container {
-  width: 100%;
+  width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
   background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
   background-size: 400% 400%;
   animation: gradientShift 8s ease infinite;
-  padding: 10px;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
-  overflow: auto; /* Allow scrolling when content is larger than viewport */
-  gap: 8px; /* Add gap between header and game board */
+  overflow: hidden; /* Prevent scrolling */
   position: relative;
   
   /* Hide scrollbars */
@@ -48,20 +45,24 @@
   position: relative;
 }
 
-/* Game Controls Section - Above the grid */
+/* Game Controls Section - Fixed at top */
 .game-controls-section {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 600px;
+  height: auto;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  padding: 15px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  margin-bottom: 40px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  z-index: 5;
+  gap: 10px;
+  padding: 12px 15px;
+  background: rgba(15, 15, 35, 0.95);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
 }
 
 /* Controls Row - Room Code, Surrender, Exit in single line */
@@ -82,9 +83,11 @@
 .current-turn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1.1rem;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .current-turn-indicator {
@@ -98,8 +101,9 @@
 
 .button-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .surrender-status {
@@ -115,13 +119,14 @@
   background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 25px;
+  padding: 10px 18px;
+  border-radius: 20px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(255, 71, 87, 0.3);
-  font-size: 1rem;
+  box-shadow: 0 3px 6px rgba(255, 71, 87, 0.3);
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .exit-button:hover {
@@ -133,13 +138,14 @@
   background: linear-gradient(135deg, #ffa726, #ff9800);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 25px;
+  padding: 10px 18px;
+  border-radius: 20px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(255, 167, 38, 0.3);
-  font-size: 1rem;
+  box-shadow: 0 3px 6px rgba(255, 167, 38, 0.3);
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .surrender-button:hover {
@@ -152,15 +158,15 @@
   display: flex !important;
   flex-direction: row !important;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.08);
-  padding: 8px 12px;
-  border-radius: 20px;
+  padding: 6px 10px;
+  border-radius: 15px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(5px);
   flex: 1;
   min-width: 0;
-  max-width: 250px;
+  max-width: 200px;
 }
 
 .room-code-info {
@@ -195,10 +201,10 @@
 }
 
 .copy-room-code-btn {
-  padding: 4px 8px !important;
-  font-size: 0.7rem;
+  padding: 3px 6px !important;
+  font-size: 0.65rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(45deg, #667eea, #764ba2);
   color: white;
   cursor: pointer;
@@ -289,49 +295,31 @@
 
 /* Game Board Container */
 .game-board-container {
+  position: fixed;
+  top: 80px; /* Start below the fixed controls */
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1;
-  min-height: 0; /* Allow flex item to shrink */
-  overflow: visible; /* Ensure borders aren't clipped */
-  padding: 10px; /* Reduced padding to prevent overlap */
-  margin-top: 0; /* Remove top margin to prevent overlap with controls */
+  overflow: hidden; /* Prevent scrolling */
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .game-board {
   position: relative;
   transition: all 0.3s ease;
-  /* Remove max-width and max-height to let inline styles control size */
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
+  margin: 0 auto; /* Center horizontally */
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .game-board:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Surrender Button */
-.surrender-button {
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  background: linear-gradient(45deg, #ff4757, #ff3838);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
-}
-
-.surrender-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
-}
-
-.surrender-button:active {
-  transform: translateY(0);
 }
 
 /* Player Colors */
@@ -354,6 +342,16 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .game-controls-section {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .game-board-container {
+    top: 90px; /* Adjust for mobile controls height */
+    padding: 8px;
+  }
+  
   .game-container {
     padding: 8px;
     gap: 6px;
@@ -415,6 +413,16 @@ body {
 }
 
 @media (max-width: 480px) {
+  .game-controls-section {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  
+  .game-board-container {
+    top: 100px; /* Adjust for small mobile screens */
+    padding: 5px;
+  }
+  
   .game-container {
     padding: 5px;
     gap: 4px;
@@ -701,22 +709,18 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .game-container {
-    padding: 10px;
-  }
-  
-  .game-title {
-    font-size: 2rem;
-  }
-  
   .game-controls-section {
-    padding: 10px 15px;
-    margin-bottom: 15px;
-    gap: 12px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .game-board-container {
+    top: 90px; /* Adjust for mobile controls height */
+    padding: 8px;
   }
 
   .controls-row {
-    gap: 10px;
+    gap: 8px;
   }
 
   .room-code-display {
@@ -760,17 +764,23 @@ body {
 }
 
 @media (max-width: 480px) {
-  .game-title {
-    font-size: 1.8rem;
+  .game-controls-section {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  
+  .game-board-container {
+    top: 100px; /* Adjust for small mobile screens */
+    padding: 5px;
   }
   
   .game-controls-section {
-    padding: 12px;
-    gap: 10px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .controls-row {
-    gap: 8px;
+    gap: 6px;
   }
 
   .room-code-display {
@@ -799,19 +809,23 @@ body {
   }
 
   .copy-room-code-btn {
-    padding: 4px 8px !important;
-    font-size: 0.65rem;
-    width: 100% !important;
+    padding: 3px 6px !important;
+    font-size: 0.6rem;
+    width: auto !important;
   }
   
   .button-group {
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
   }
   
   .exit-button, .surrender-button {
-    padding: 8px 12px;
-    font-size: 0.8rem;
+    padding: 6px 10px;
+    font-size: 0.75rem;
     white-space: nowrap;
+  }
+  
+  .current-turn {
+    font-size: 0.85rem;
   }
 }

@@ -233,17 +233,12 @@ select.game-select option {
   margin-top: 15px;
 }
 
-.share-game-box, .join-game-box {
+.join-game-box {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 15px;
   padding: 20px;
   text-align: center;
-}
-
-.share-game-box {
-  border-color: rgba(255, 215, 0, 0.3);
-  background: rgba(255, 215, 0, 0.05);
 }
 
 .join-game-box {
@@ -256,10 +251,6 @@ select.game-select option {
   margin-bottom: 15px;
   color: #4ecdc4;
   font-weight: 600;
-}
-
-.share-game-box .box-title {
-  color: #ffd700;
 }
 
 .box-instruction {
@@ -392,7 +383,7 @@ select.game-select option {
     gap: 15px;
   }
   
-  .share-game-box, .join-game-box {
+  .join-game-box {
     padding: 15px;
   }
   
@@ -484,7 +475,7 @@ select.game-select option {
     gap: 12px;
   }
   
-  .share-game-box, .join-game-box {
+  .join-game-box {
     padding: 12px;
   }
   
