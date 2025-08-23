@@ -311,11 +311,7 @@ function Menu() {
             playerUsernames={playerUsernames}
             waitingForPlayers={waitingForPlayers}
           />
-          {mode === 'multi' && (
-            <div className="game-info-footer">
-              Game ID: {gameId || 'N/A'} | Player ID: {playerId || 'N/A'} | {isHost ? 'Host' : 'Player'}
-            </div>
-          )}
+          
         </>
       )}
     </div>

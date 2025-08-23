@@ -567,14 +567,6 @@ const GameBoard = ({
     }
   };
 
-  const handleCopyGameId = () => {
-    if (gameId) {
-      navigator.clipboard.writeText(gameId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    }
-  };
-
   const handleExit = () => {
     if (mode === 'multi' && playerId) {
       // Send both roomCode and gameId for backend compatibility
@@ -718,53 +710,57 @@ const GameBoard = ({
           ></div>
           <span>Current Turn: {getPlayerDisplayName(currentPlayer)}</span>
         </div>
-        
-        <div className="button-group">
-          {/* Show surrender status */}
-          {hasSurrendered ? (
-            <div className="surrender-status">
-              You have surrendered
-            </div>
-          ) : mode === 'multi' ? (
-            <>
+
+        <div className="controls-row">
+          {/* Room Code Display for Multiplayer - Left */}
+          {mode === 'multi' && (roomCode || gameId) ? (
+            <div className="room-code-display">
+              <div className="room-code-info">
+                <span className="room-code-label">Room Code:</span>
+                <span className="room-code-value">{roomCode || gameId}</span>
+              </div>
               <button
-                onClick={handleSurrenderConfirm}
-                className="surrender-button"
+                onClick={() => {
+                  navigator.clipboard.writeText(roomCode || gameId);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1200);
+                }}
+                className="copy-room-code-btn"
               >
-                Surrender
+                {copied ? '✓ Copied!' : '📋 Copy'}
               </button>
+            </div>
+          ) : (
+            <div className="room-code-placeholder"></div>
+          )}
+
+          {/* Action Buttons - Center and Right */}
+          <div className="button-group">
+            {/* Show surrender status */}
+            {hasSurrendered ? (
+              <div className="surrender-status">
+                You have surrendered
+              </div>
+            ) : mode === 'multi' ? (
+              <>
+                <button
+                  onClick={handleSurrenderConfirm}
+                  className="surrender-button"
+                >
+                  Surrender
+                </button>
+                <button onClick={handleExit} className="exit-button">
+                  Exit Game
+                </button>
+              </>
+            ) : (
               <button onClick={handleExit} className="exit-button">
                 Exit Game
               </button>
-            </>
-          ) : (
-            <button onClick={handleExit} className="exit-button">
-              Exit Game
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Multiplayer Info - Only show in multiplayer mode */}
-      {mode === 'multi' && (
-        <div className="multiplayer-info">
-          <div className="game-id-section">
-            <span className="info-label">Game ID:</span>
-            <span className="info-value">{gameId || 'N/A'}</span>
-            <button
-              onClick={handleCopyGameId}
-              className="copy-button"
-            >
-              {copied ? "✓ Copied!" : "📋 Copy"}
-            </button>
-          </div>
-          <div className="player-id-section">
-            <span className="info-label">Player ID:</span>
-            <span className="info-value">{playerId || 'N/A'}</span>
-            {isHost && <span className="host-badge">Host</span>}
-          </div>
-        </div>
-      )}
 
       {/* Game Board */}
       <div className="game-board-container">
