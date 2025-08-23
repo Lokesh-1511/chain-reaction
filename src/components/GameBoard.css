@@ -53,8 +53,8 @@
   width: 100%;
   max-width: 600px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 15px;
   padding: 15px 20px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -62,6 +62,21 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   z-index: 5;
+}
+
+/* Controls Row - Room Code, Surrender, Exit in single line */
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 15px;
+}
+
+/* Room Code Placeholder for single player */
+.room-code-placeholder {
+  flex: 1;
+  min-width: 0;
 }
 
 .current-turn {
@@ -118,18 +133,92 @@
   background: linear-gradient(135deg, #ffa726, #ff9800);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 12px 24px;
+  border-radius: 25px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 8px rgba(255, 167, 38, 0.3);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .surrender-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(255, 167, 38, 0.4);
+}
+
+/* Room Code Display - Default (Desktop) */
+.room-code-display {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(5px);
+  flex: 1;
+  min-width: 0;
+  max-width: 250px;
+}
+
+.room-code-info {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.room-code-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.room-code-value {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 0.9rem;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.copy-room-code-btn {
+  padding: 4px 8px !important;
+  font-size: 0.7rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: auto !important;
+}
+
+.copy-room-code-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .game-title {
@@ -145,70 +234,7 @@
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Multiplayer Info */
-.multiplayer-info {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-  width: 100%;
-}
 
-.game-id-section, .player-id-section {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 6px 12px;
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 0.9rem;
-  min-width: 0;
-  flex-shrink: 0;
-}
-
-.info-label {
-  font-size: 0.8rem;
-  opacity: 0.8;
-  font-weight: 500;
-}
-
-.info-value {
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  color: #ffd700;
-  font-size: 0.9rem;
-}
-
-.copy-button {
-  padding: 3px 6px;
-  font-size: 0.7rem;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.copy-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.host-badge {
-  background: linear-gradient(45deg, #ffd700, #ffed4e);
-  color: #000;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  margin-left: 4px;
-}
 
 /* Current Player Section */
 .current-player-section {
@@ -342,38 +368,7 @@ body {
     margin-bottom: 10px;
   }
   
-  .multiplayer-info {
-    gap: 8px;
-    margin-bottom: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  
-  .game-id-section, .player-id-section {
-    padding: 4px 8px;
-    font-size: 0.8rem;
-    border-radius: 15px;
-    min-width: 100px;
-    justify-content: center;
-  }
-  
-  .info-label {
-    font-size: 0.7rem;
-  }
-  
-  .info-value {
-    font-size: 0.8rem;
-  }
-  
-  .copy-button {
-    padding: 2px 4px;
-    font-size: 0.6rem;
-  }
-  
-  .host-badge {
-    padding: 1px 4px;
-    font-size: 0.6rem;
-  }
+
   
   .current-player-section {
     flex-direction: row;
@@ -434,18 +429,7 @@ body {
     margin-bottom: 8px;
   }
   
-  .multiplayer-info {
-    flex-direction: column;
-    gap: 6px;
-    align-items: center;
-  }
-  
-  .game-id-section, .player-id-section {
-    width: auto;
-    min-width: 180px;
-    justify-content: center;
-    font-size: 0.75rem;
-  }
+
   
   .current-player-section {
     flex-direction: column;
@@ -491,17 +475,6 @@ body {
   .game-title {
     font-size: 1.3rem;
     margin-bottom: 6px;
-  }
-  
-  .multiplayer-info {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .game-id-section, .player-id-section {
-    min-width: 160px;
-    font-size: 0.7rem;
-    padding: 3px 6px;
   }
   
   .current-player-section {
@@ -739,8 +712,32 @@ body {
   .game-controls-section {
     padding: 10px 15px;
     margin-bottom: 15px;
-    flex-direction: column;
-    gap: 15px;
+    gap: 12px;
+  }
+
+  .controls-row {
+    gap: 10px;
+  }
+
+  .room-code-display {
+    justify-content: center;
+    padding: 6px 10px;
+    max-width: 200px;
+    flex: 1;
+  }
+
+  .room-code-label {
+    font-size: 0.8rem;
+  }
+
+  .room-code-value {
+    font-size: 0.85rem;
+  }
+
+  .button-group {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   
   .current-turn {
@@ -760,10 +757,6 @@ body {
     font-size: 1.1rem;
   }
   
-  .multiplayer-info {
-    flex-direction: column;
-    gap: 10px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -772,17 +765,53 @@ body {
   }
   
   .game-controls-section {
-    padding: 15px;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .controls-row {
+    gap: 8px;
+  }
+
+  .room-code-display {
+    flex-direction: column !important;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    max-width: 140px;
+    flex: 1;
+  }
+
+  .room-code-info {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .room-code-label {
+    font-size: 0.75rem;
+  }
+
+  .room-code-value {
+    font-size: 0.8rem;
+  }
+
+  .copy-room-code-btn {
+    padding: 4px 8px !important;
+    font-size: 0.65rem;
+    width: 100% !important;
   }
   
   .button-group {
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
+    gap: 6px;
+    flex-shrink: 0;
   }
   
   .exit-button, .surrender-button {
-    width: 100%;
-    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
 }
