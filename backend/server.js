@@ -26,11 +26,11 @@ app.use(cors({
 
 app.use(express.json());
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.get('Origin') || 'none'}`);
-  next();
-});
+// Request logging middleware (disabled for cleaner output)
+// app.use((req, res, next) => {
+//   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.get('Origin') || 'none'}`);
+//   next();
+// });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -152,7 +152,7 @@ app.options('*', cors());
 
 // REST endpoint: Create a new game
 app.post('/api/game', (req, res) => {
-  console.log('POST /api/game called', req.body);
+  // console.log('POST /api/game called', req.body);
   const { id, mode, row, col, players } = req.body;
   if (!['single', 'multi'].includes(mode)) {
     return res.status(400).json({ error: 'Invalid mode' });
@@ -166,7 +166,7 @@ app.post('/api/game', (req, res) => {
 
 // REST endpoint: Join a game
 app.post('/api/game/:id/join', (req, res) => {
-  console.log(`POST /api/game/${req.params.id}/join called`, req.body);
+  // console.log(`POST /api/game/${req.params.id}/join called`, req.body);
   const { username } = req.body;
   const game = games[req.params.id];
   if (!game) return res.status(404).json({ error: 'Game not found' });
@@ -195,7 +195,7 @@ app.post('/api/game/:id/join', (req, res) => {
 
 // REST endpoint: Get game state
 app.get('/api/game/:id', (req, res) => {
-  console.log(`GET /api/game/${req.params.id} called`);
+  // console.log(`GET /api/game/${req.params.id} called`);
   const game = games[req.params.id];
   if (!game) return res.status(404).json({ error: 'Game not found' });
   res.json(game);
@@ -280,14 +280,14 @@ app.put('/api/user/:userId/stats', (req, res) => {
 
 // Socket.IO: Handle all multiplayer interactions
 io.on('connection', (socket) => {
-  console.log(`🔌 Socket connected: ${socket.id}`);
+  // console.log(`🔌 Socket connected: ${socket.id}`);
 
   // ========== OLD MULTIPLAYER SYSTEM (gameId-based) ==========
   socket.on('joinGame', ({ gameId, playerId }) => {
-    console.log(`🎮 joinGame: gameId=${gameId}, playerId=${playerId}`);
+    // console.log(`🎮 joinGame: gameId=${gameId}, playerId=${playerId}`);
     const game = games[gameId];
     if (!game) {
-      console.log(`❌ Game not found: ${gameId}`);
+      // console.log(`❌ Game not found: ${gameId}`);
       return;
     }
     
@@ -296,7 +296,7 @@ io.on('connection', (socket) => {
     socket.gameId = gameId;
     socket.playerId = playerId;
     
-    console.log(`✅ Player ${playerId} joined room: ${roomName}`);
+    // console.log(`✅ Player ${playerId} joined room: ${roomName}`);
     socket.emit('joined', { gameId, playerId });
   });
 
@@ -320,7 +320,7 @@ io.on('connection', (socket) => {
 
   // ========== NEW MULTIPLAYER SYSTEM (roomCode-based) ==========
   socket.on('createRoom', ({ username }) => {
-    console.log(`🏠 createRoom: username=${username}`);
+    // console.log(`🏠 createRoom: username=${username}`);
     const game = createGame({ mode: 'multi', players: 2 });
     const roomCode = game.id.toString();
     const playerId = 1;
@@ -335,7 +335,7 @@ io.on('connection', (socket) => {
     socket.playerId = playerId;
     socket.username = username;
     
-    console.log(`✅ Room created: ${roomCode}, host: ${playerId}`);
+    // console.log(`✅ Room created: ${roomCode}, host: ${playerId}`);
     socket.emit('roomCreated', { 
       roomCode, 
       playerId, 
@@ -346,7 +346,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', ({ roomCode, username }) => {
-    console.log(`🚪 joinRoom: roomCode=${roomCode}, username=${username}`);
+    // console.log(`🚪 joinRoom: roomCode=${roomCode}, username=${username}`);
     const game = games[roomCode];
     if (!game) {
       socket.emit('error', { message: 'Room not found' });
@@ -373,7 +373,7 @@ io.on('connection', (socket) => {
       game.status = 'active';
     }
     
-    console.log(`✅ Player ${playerId} joined room: ${roomCode}`);
+    // console.log(`✅ Player ${playerId} joined room: ${roomCode}`);
     
     // Notify all players in the room
     io.to(`room_${roomCode}`).emit('playerJoined', {
@@ -395,16 +395,16 @@ io.on('connection', (socket) => {
 
   // Handle moves for room-based system
   socket.on('makeMove', ({ roomCode, move, username }) => {
-    console.log(`🎯 makeMove (room): roomCode=${roomCode}, playerId=${socket.playerId}, move=${JSON.stringify(move)}`);
+    // console.log(`🎯 makeMove (room): roomCode=${roomCode}, playerId=${socket.playerId}, move=${JSON.stringify(move)}`);
     const game = games[roomCode];
     if (!game || game.status !== 'active') {
-      console.log(`❌ Invalid move: game not found or not active`);
+      // console.log(`❌ Invalid move: game not found or not active`);
       return;
     }
     
     const playerId = socket.playerId;
     if (!playerId || game.state.currentPlayer !== playerId) {
-      console.log(`❌ Invalid move: not player's turn`);
+      // console.log(`❌ Invalid move: not player's turn`);
       return;
     }
     

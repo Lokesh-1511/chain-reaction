@@ -19,23 +19,23 @@ const socket = io(BACKEND_URL, {
 
 // Add connection event listeners for debugging
 socket.on('connect', () => {
-  console.log('Connected to backend server:', BACKEND_URL);
+  // Connected to backend server
 });
 
 socket.on('disconnect', (reason) => {
-  console.log('Disconnected from backend server:', reason);
+  // Disconnected from backend server
 });
 
 socket.on('connect_error', (error) => {
-  console.error('Connection error:', error);
+  // Connection error
 });
 
 socket.on('reconnect', (attemptNumber) => {
-  console.log('Reconnected to backend server after', attemptNumber, 'attempts');
+  // Reconnected to backend server
 });
 
 socket.on('reconnect_error', (error) => {
-  console.error('Reconnection error:', error);
+  // Reconnection error
 });
 
 // Enhanced socket functions for multiplayer with usernames

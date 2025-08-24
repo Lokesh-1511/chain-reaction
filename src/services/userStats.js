@@ -50,9 +50,12 @@ export const updateGameStats = async (gameData) => {
   
   // Only track multiplayer games for competitive integrity
   if (gameData.gameMode !== 'multi') {
-    console.log('📊 Single-player game not tracked in stats (prevents score manipulation)');
+    console.log('📊 Single-player game not tracked in competitive stats (prevents score manipulation)');
     return;
   }
+  
+  // Record multiplayer game in history
+  await recordGameHistory(currentUser.uid, gameData);
   
   try {
     const userRef = doc(db, 'users', currentUser.uid);
@@ -140,7 +143,7 @@ export const recordGameHistory = async (uid, gameData) => {
 /**
  * Get recent game history for a user
  */
-export const getRecentGames = async (uid, limitCount = 10) => {
+export const getRecentGames = async (uid, limitCount = 30) => {
   try {
     const gameHistoryRef = collection(db, 'users', uid, 'gameHistory');
     const q = query(gameHistoryRef, orderBy('timestamp', 'desc'), limit(limitCount));

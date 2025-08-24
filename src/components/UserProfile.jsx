@@ -557,44 +557,91 @@ const UserProfile = () => {
                   {activeTab === 'history' && (
                     <div className="history-section">
                       <div className="section-header">
-                        <h3>📜 Recent Games</h3>
-                        <div className="section-subtitle">Your latest multiplayer matches</div>
+                        <h3>📜 Recent Multiplayer Games</h3>
+                        <div className="section-subtitle">Your last 30 competitive matches</div>
                         <div className="stats-note">
-                          Only multiplayer games are shown (single-player games don't affect stats)
+                          Each square represents a multiplayer game - green for wins, red for losses
                         </div>
                       </div>
-                      <div className="games-list">
+                      
+                      {/* GitHub-style Activity Grid */}
+                      <div className="games-activity-grid">
                         {recentGames.length > 0 ? (
-                          recentGames.map((game, index) => {
-                            const result = formatGameResult(game);
-                            return (
-                              <div key={game.id || index} className={`game-item ${result.resultClass}`}>
-                                <div className="game-result">
-                                  <span className="result-icon">{result.icon}</span>
-                                  <span className="result-text">{result.result}</span>
+                          <>
+                            <div className="activity-container">
+                              {Array.from({ length: 30 }, (_, index) => {
+                                const game = recentGames[index];
+                                const hasGame = game && game.gameMode === 'multi';
+                                const won = hasGame && game.winner === game.playerId;
+                                
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`activity-box ${
+                                      !hasGame ? 'empty' : won ? 'win' : 'loss'
+                                    }`}
+                                    title={
+                                      hasGame
+                                        ? `${won ? 'Won' : 'Lost'} - ${Math.sqrt(game.gridSize || 25)}x${Math.sqrt(game.gridSize || 25)} grid - ${new Date(game.timestamp).toLocaleDateString()}`
+                                        : 'No game'
+                                    }
+                                  >
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Legend */}
+                            <div className="activity-legend">
+                              <span className="legend-text">Recent games:</span>
+                              <div className="legend-items">
+                                <div className="legend-item">
+                                  <div className="legend-box empty"></div>
+                                  <span>No game</span>
                                 </div>
-                                <div className="game-details">
-                                  <div className="game-mode">
-                                    {game.gameMode === 'single' ? '🤖 vs AI' : '👥 Multiplayer'}
-                                  </div>
-                                  <div className="game-grid">
-                                    Grid: {Math.sqrt(game.gridSize || 25)}x{Math.sqrt(game.gridSize || 25)}
-                                  </div>
-                                  <div className="game-score">
-                                    +{game.score || 0} pts
-                                  </div>
+                                <div className="legend-item">
+                                  <div className="legend-box win"></div>
+                                  <span>Won</span>
                                 </div>
-                                <div className="game-time">
-                                  {new Date(game.timestamp).toLocaleDateString()}
+                                <div className="legend-item">
+                                  <div className="legend-box loss"></div>
+                                  <span>Lost</span>
                                 </div>
                               </div>
-                            );
-                          })
+                            </div>
+                            
+                            {/* Summary Stats */}
+                            <div className="games-summary">
+                              {(() => {
+                                const multiplayerGames = recentGames.filter(game => game.gameMode === 'multi');
+                                const wins = multiplayerGames.filter(game => game.winner === game.playerId).length;
+                                const total = multiplayerGames.length;
+                                const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+                                
+                                return (
+                                  <>
+                                    <div className="summary-stat">
+                                      <span className="stat-value">{total}</span>
+                                      <span className="stat-label">Games Played</span>
+                                    </div>
+                                    <div className="summary-stat">
+                                      <span className="stat-value">{wins}</span>
+                                      <span className="stat-label">Games Won</span>
+                                    </div>
+                                    <div className="summary-stat">
+                                      <span className="stat-value">{winRate}%</span>
+                                      <span className="stat-label">Win Rate</span>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </>
                         ) : (
                           <div className="no-games">
                             <div className="no-games-icon">🎮</div>
-                            <div className="no-games-text">No games played yet</div>
-                            <div className="no-games-subtitle">Start playing to see your game history!</div>
+                            <div className="no-games-text">No multiplayer games played yet</div>
+                            <div className="no-games-subtitle">Start playing competitive matches to see your activity!</div>
                           </div>
                         )}
                       </div>
