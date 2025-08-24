@@ -51,9 +51,14 @@ const GameBoard = ({
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const [gameStartTime, setGameStartTime] = useState(null);
 
+  // Update gamePlayerUsernames when playerUsernames prop changes
+  useEffect(() => {
+    setGamePlayerUsernames(playerUsernames);
+  }, [playerUsernames]);
+
   // Debug logging for modal states
   useEffect(() => {
-    console.log(`🖥️ Modal states: showModal=${showModal}, replayRequested=${replayRequested}, showReplayWaiting=${showReplayWaiting}, hasResponded=${hasResponded}`);
+    // Modal state tracking for debugging
   }, [showModal, replayRequested, showReplayWaiting, hasResponded]);
 
   // Handle winner state changes and update stats
@@ -406,16 +411,52 @@ const GameBoard = ({
 
     socket.on('playerLeft', ({ playerId: leftPlayerId, remainingPlayers, message }) => {
       setRemainingPlayers(remainingPlayers);
-      // Show a brief notification that a player left
       console.log(message);
-      // You could add a toast notification here
+      
+      // Check if only one player remains - they win
+      if (remainingPlayers.length === 1 && mode === 'multi' && gameStartTime) {
+        const winner = remainingPlayers[0];
+        const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000);
+        const gameData = {
+          winner,
+          playerId,
+          gridSize: row * col,
+          gameDuration,
+          gameMode: mode,
+          totalPlayers: players,
+          roomCode: roomCode || gameId,
+          endReason: 'player_left'
+        };
+        
+        updateGameStats(gameData).catch(error => {
+          console.error('Failed to update game stats for player left:', error);
+        });
+      }
     });
 
     socket.on('playerSurrendered', ({ playerId: surrenderedPlayerId, remainingPlayers, message }) => {
       setRemainingPlayers(remainingPlayers);
-      // Show a brief notification that a player surrendered
       console.log(message);
-      // You could add a toast notification here
+      
+      // Check if only one player remains - they win
+      if (remainingPlayers.length === 1 && mode === 'multi' && gameStartTime) {
+        const winner = remainingPlayers[0];
+        const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000);
+        const gameData = {
+          winner,
+          playerId,
+          gridSize: row * col,
+          gameDuration,
+          gameMode: mode,
+          totalPlayers: players,
+          roomCode: roomCode || gameId,
+          endReason: 'player_surrendered'
+        };
+        
+        updateGameStats(gameData).catch(error => {
+          console.error('Failed to update game stats for surrender:', error);
+        });
+      }
     });
 
     return () => {
