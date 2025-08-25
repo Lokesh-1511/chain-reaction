@@ -336,28 +336,82 @@ const UserProfile = () => {
                 <div className="dashboard-content">
                   <div className="profile-section">
                     <div className="profile-header">
-                      <div className="profile-avatar-large">
-                        <div className="avatar-ring">
-                          <div className="avatar-inner">
-                            {getUsername().charAt(0).toUpperCase()}
+                      <div className="profile-avatar-container">
+                        <div className="profile-avatar-large">
+                          <div className="avatar-ring">
+                            <div className="avatar-inner">
+                              {getUsername().charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="online-indicator">
+                            <div className="pulse-ring"></div>
+                            <div className="online-dot"></div>
                           </div>
                         </div>
-                        <div className="online-indicator"></div>
+                        <div className="profile-level">
+                          <span className="level-badge">
+                            <span className="level-icon">⭐</span>
+                            <span className="level-text">Level {Math.floor((userProfile?.gamesWon || 0) / 5) + 1}</span>
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="profile-info">
                         <div className="profile-details">
                           {!isEditing ? (
                             <>
-                              <h2 className="username">{getUsername()}</h2>
-                              <p className="email">{user.email}</p>
+                              <div className="profile-name-section">
+                                <h2 className="username">
+                                  {getUsername()}
+                                  <div className="verified-badge">✓</div>
+                                </h2>
+                                <p className="email">{user.email}</p>
+                              </div>
+                              
+                              <div className="profile-stats-mini">
+                                <div className="mini-stat">
+                                  <span className="mini-stat-value">{userProfile?.gamesPlayed || 0}</span>
+                                  <span className="mini-stat-label">Games</span>
+                                </div>
+                                <div className="mini-stat">
+                                  <span className="mini-stat-value">{userProfile?.gamesWon || 0}</span>
+                                  <span className="mini-stat-label">Wins</span>
+                                </div>
+                                <div className="mini-stat">
+                                  <span className="mini-stat-value">{getWinRate()}%</span>
+                                  <span className="mini-stat-label">Win Rate</span>
+                                </div>
+                              </div>
+                              
                               <div className="bio-container">
                                 <p className="bio">{userProfile?.bio || 'Chain Reaction enthusiast 🔥'}</p>
                               </div>
+                              
                               <div className="profile-badges">
-                                {(userProfile?.gamesWon || 0) > 0 && <span className="badge winner">Winner 🏆</span>}
-                                {(userProfile?.gamesPlayed || 0) > 10 && <span className="badge veteran">Veteran 🎮</span>}
-                                {getWinRate() > 50 && <span className="badge champion">Champion ⭐</span>}
+                                {(userProfile?.gamesWon || 0) > 0 && (
+                                  <span className="badge winner">
+                                    <span className="badge-icon">🏆</span>
+                                    <span className="badge-text">Winner</span>
+                                  </span>
+                                )}
+                                {(userProfile?.gamesPlayed || 0) > 10 && (
+                                  <span className="badge veteran">
+                                    <span className="badge-icon">🎮</span>
+                                    <span className="badge-text">Veteran</span>
+                                  </span>
+                                )}
+                                {getWinRate() > 50 && (
+                                  <span className="badge champion">
+                                    <span className="badge-icon">⭐</span>
+                                    <span className="badge-text">Champion</span>
+                                  </span>
+                                )}
+                                {(userProfile?.currentStreak || 0) > 3 && (
+                                  <span className="badge streak">
+                                    <span className="badge-icon">🔥</span>
+                                    <span className="badge-text">Hot Streak</span>
+                                  </span>
+                                )}
                               </div>
                             </>
                           ) : (
