@@ -8,5 +8,11 @@ export default defineConfig({
     rollupOptions: {
       external: []
     }
+  },
+  server: {
+    historyApiFallback: true
+  },
+  preview: {
+    historyApiFallback: true
   }
 })
