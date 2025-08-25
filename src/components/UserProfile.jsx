@@ -16,7 +16,7 @@ import {
   getLeaderboard,
   updateGameStats as updateGameStatsService
 } from '../services/userStats';
-import './UserProfile.css';
+import './UserProfile_Clean.css';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
