@@ -54,6 +54,16 @@ function Menu({ onPageChange }) {
           
           // Add class to body to indicate game is active
           document.body.classList.add('game-active');
+          
+          // If this is a multiplayer game with a room code, attempt to rejoin
+          if (state.mode === 'multi' && state.roomCode && state.playerId) {
+            console.log('🔄 Menu: Attempting to rejoin room after refresh...', { 
+              roomCode: state.roomCode, 
+              playerId: state.playerId 
+            });
+            // The actual rejoin will be handled by GameBoard component
+            // This just sets up the state for rejoining
+          }
         }
       } catch (error) {
         console.error('Error loading game state:', error);

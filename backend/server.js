@@ -658,14 +658,103 @@ io.on('connection', (socket) => {
     }
   }
 
+  // Handle rejoining a room after refresh/disconnect
+  socket.on('rejoinRoom', ({ roomCode, playerId, username }) => {
+    console.log(`🔄 rejoinRoom: roomCode=${roomCode}, playerId=${playerId}, username=${username}`);
+    const game = games[roomCode];
+    
+    if (!game) {
+      socket.emit('rejoinFailed', { message: 'Room not found' });
+      return;
+    }
+    
+    // Check if this playerId was previously in the game
+    if (!game.players.includes(playerId)) {
+      socket.emit('rejoinFailed', { message: 'Player was not in this room' });
+      return;
+    }
+    
+    // Check if this player has a reconnect timer running (they disconnected recently)
+    if (game.reconnectTimers && game.reconnectTimers[playerId]) {
+      // Cancel the reconnect timer - they're back!
+      clearTimeout(game.reconnectTimers[playerId]);
+      delete game.reconnectTimers[playerId];
+      console.log(`⏰ Cancelled 30s reconnection timer for player ${playerId}`);
+      
+      // Rejoin the room
+      socket.join(`room_${roomCode}`);
+      socket.roomCode = roomCode;
+      socket.playerId = playerId;
+      socket.username = username;
+      
+      // Re-add to active players
+      game.activePlayers.add(playerId);
+      
+      // Update username in case it changed
+      game.playerUsernames[playerId] = username || `Player ${playerId}`;
+      
+      console.log(`✅ Player ${playerId} rejoined room: ${roomCode}`);
+      
+      // Send the current game state to the rejoining player
+      socket.emit('rejoinedRoom', { 
+        state: game.state,
+        playerUsernames: game.playerUsernames,
+        message: 'Successfully rejoined the game'
+      });
+      
+      // Notify other players that this player is back
+      socket.to(`room_${roomCode}`).emit('playerRejoined', {
+        roomCode,
+        playerId,
+        username,
+        playerUsernames: game.playerUsernames,
+        message: `${username} reconnected successfully!`
+      });
+    } else {
+      // Player doesn't have an active reconnect timer (either never disconnected or timer expired)
+      socket.emit('rejoinFailed', { message: 'No pending reconnection for this player or timer expired' });
+    }
+  });
+
   // Handle socket disconnection
   socket.on('disconnect', () => {
     console.log(`🔌 Socket disconnected: ${socket.id}`);
+    
+    // For room-based games, give a 30-second grace period for reconnection
+    if (socket.roomCode && socket.playerId) {
+      const game = games[socket.roomCode];
+      if (game && game.status === 'active') {
+        console.log(`⏰ Player ${socket.playerId} disconnected from room ${socket.roomCode}, starting 30s reconnection timer...`);
+        
+        // Mark player as temporarily disconnected but don't remove them yet
+        game.activePlayers.delete(socket.playerId);
+        
+        // Notify other players about the disconnection
+        socket.to(`room_${socket.roomCode}`).emit('playerDisconnected', {
+          roomCode: socket.roomCode,
+          playerId: socket.playerId,
+          username: socket.username,
+          message: `${socket.username || `Player ${socket.playerId}`} disconnected. Waiting 30 seconds for reconnection...`,
+          gracePeriodSeconds: 30
+        });
+        
+        // Set a 30-second timer to remove the player if they don't reconnect
+        const reconnectTimer = setTimeout(() => {
+          console.log(`❌ Reconnection timer expired for player ${socket.playerId} in room ${socket.roomCode}`);
+          handlePlayerExit(socket.roomCode, socket.playerId, 'timeout', true);
+        }, 30000); // 30 seconds
+        
+        // Store the timer so we can cancel it if they reconnect
+        if (!game.reconnectTimers) {
+          game.reconnectTimers = {};
+        }
+        game.reconnectTimers[socket.playerId] = reconnectTimer;
+      }
+    }
+    
+    // For non-room games, handle immediately (old system)
     if (socket.gameId && socket.playerId) {
       handlePlayerExit(socket.gameId, socket.playerId, 'disconnect', false);
-    }
-    if (socket.roomCode && socket.playerId) {
-      handlePlayerExit(socket.roomCode, socket.playerId, 'disconnect', true);
     }
   });
 });

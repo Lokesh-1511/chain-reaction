@@ -3,6 +3,7 @@ import GridCell from './GridCell';
 import socket from '../services/socket';
 import { getGameState } from '../services/api';
 import { updateGameStats } from '../services/userStats';
+import { getCurrentUsername } from './UserProfile';
 import './GameBoard.css';
 
 const GameBoard = ({ 
@@ -266,15 +267,46 @@ const GameBoard = ({
       return;
     }
     
-    // For multiplayer, handle server connections
+    // For multiplayer, handle server connections and rejoining
     if (mode === 'multi' && roomCode) {
-      // For room-based multiplayer, we're already connected to the room from Menu
-      // Just fetch the game state
-      getGameState(gameId).then(game => {
-        setGameState(game.state);
-        setCells(game.state.grid);
-        setCurrentPlayer(game.state.currentPlayer);
-        setActivePlayers(game.state.activePlayers);
+      // Always attempt to rejoin when the component loads
+      // The server will decide if this player has a reconnect timer running
+      console.log('🔄 Attempting to rejoin multiplayer game...', { roomCode, playerId });
+      
+      socket.emit('rejoinRoom', { 
+        roomCode, 
+        playerId, 
+        username: getCurrentUsername() 
+      });
+      
+      // Set a timeout in case rejoin fails
+      const rejoinTimeout = setTimeout(() => {
+        console.warn('⚠️ Rejoin timeout - fetching fresh game state');
+        // Fall back to fetching game state normally
+        getGameState(gameId).then(game => {
+          setGameState(game.state);
+          setCells(game.state.grid);
+          setCurrentPlayer(game.state.currentPlayer);
+          setActivePlayers(game.state.activePlayers);
+        }).catch(error => {
+          console.error('Failed to fetch game state:', error);
+        });
+      }, 5000); // 5 second timeout
+      
+      // Clear timeout when rejoin succeeds or fails
+      socket.once('rejoinedRoom', () => {
+        clearTimeout(rejoinTimeout);
+      });
+      
+      socket.once('rejoinFailed', () => {
+        clearTimeout(rejoinTimeout);
+        // If rejoin failed, fetch normal game state
+        getGameState(gameId).then(game => {
+          setGameState(game.state);
+          setCells(game.state.grid);
+          setCurrentPlayer(game.state.currentPlayer);
+          setActivePlayers(game.state.activePlayers);
+        });
       });
     } else if (mode === 'multi') {
       // For old-style multiplayer games, join the game room
@@ -352,6 +384,40 @@ const GameBoard = ({
           console.error('Failed to update game stats:', error);
         });
       }
+    });
+
+    // Listen for rejoin success
+    socket.on('rejoinedRoom', ({ state, playerUsernames, message }) => {
+      console.log('✅ Successfully rejoined multiplayer game:', message);
+      if (state) {
+        setGameState(state);
+        setCells(state.grid);
+        setCurrentPlayer(state.currentPlayer);
+        setActivePlayers(state.activePlayers);
+      }
+      if (playerUsernames) {
+        setGamePlayerUsernames(playerUsernames);
+      }
+    });
+
+    // Listen for rejoin failure
+    socket.on('rejoinFailed', ({ message }) => {
+      console.error('❌ Failed to rejoin game:', message);
+      // Could show an error message to the user
+      setError && setError('Failed to rejoin the game. Starting a new game.');
+    });
+
+    // Listen for player disconnect/rejoin events
+    socket.on('playerDisconnected', ({ playerId, username, message, gracePeriodSeconds }) => {
+      if (gracePeriodSeconds) {
+        console.log(`⏰ Player ${username} (${playerId}) disconnected - ${gracePeriodSeconds}s to reconnect`);
+        // Silently handle disconnection - no user prompts
+      }
+    });
+
+    socket.on('playerRejoined', ({ playerId, username, message }) => {
+      console.log(`✅ Player ${username} (${playerId}) rejoined successfully`);
+      // Silently handle reconnection - no user prompts
     });
 
     // Listen for replay-related events
@@ -463,6 +529,10 @@ const GameBoard = ({
     return () => {
       socket.off('gameUpdate');
       socket.off('gameOver');
+      socket.off('rejoinedRoom');
+      socket.off('rejoinFailed');
+      socket.off('playerDisconnected');
+      socket.off('playerRejoined');
       socket.off('replayRequested');
       socket.off('replayResponse');
       socket.off('gameRestarted');
