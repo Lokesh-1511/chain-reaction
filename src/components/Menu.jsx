@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import GameBoard from "./GameBoard";
 import { createGame, joinGame } from '../services/api';
 import socket, { createRoom, joinRoom } from '../services/socket';
@@ -13,6 +14,9 @@ const boardSizes = {
 };
 
 function Menu({ onPageChange }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [page, setPage] = useState("menu");
   const [size, setSize] = useState("small");
   const [row, setRow] = useState(boardSizes.small.row);
@@ -27,6 +31,55 @@ function Menu({ onPageChange }) {
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
   const [roomCode, setRoomCode] = useState("");
+  const [isLoadingState, setIsLoadingState] = useState(true);
+
+  // State persistence logic
+  useEffect(() => {
+    // Load saved game state on component mount
+    const savedGameState = localStorage.getItem('chainReactionGameState');
+    if (savedGameState) {
+      try {
+        const state = JSON.parse(savedGameState);
+        if (state.gameStarted) {
+          setPage("game");
+          setSize(state.size || "small");
+          setRow(state.row || boardSizes.small.row);
+          setCol(state.col || boardSizes.small.col);
+          setPlayers(state.players || 2);
+          setGameId(state.gameId || "");
+          setPlayerId(state.playerId || null);
+          setIsHost(state.isHost || false);
+          setMode(state.mode || 'single');
+          setRoomCode(state.roomCode || "");
+        }
+      } catch (error) {
+        console.error('Error loading game state:', error);
+        localStorage.removeItem('chainReactionGameState');
+      }
+    }
+    setIsLoadingState(false);
+  }, []);
+
+  // Save game state whenever relevant state changes
+  useEffect(() => {
+    if (page === "game") {
+      const gameState = {
+        gameStarted: true,
+        page,
+        size,
+        row,
+        col,
+        players,
+        gameId,
+        playerId,
+        isHost,
+        mode,
+        roomCode,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('chainReactionGameState', JSON.stringify(gameState));
+    }
+  }, [page, size, row, col, players, gameId, playerId, isHost, mode, roomCode]);
   const [playerUsernames, setPlayerUsernames] = useState({});
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
 
@@ -83,6 +136,9 @@ function Menu({ onPageChange }) {
     setIsHost(false);
     setJoinGameId("");
     setError("");
+    
+    // Clear saved game state when exiting
+    localStorage.removeItem('chainReactionGameState');
   };
 
   // Socket event handlers for room-based multiplayer
@@ -183,7 +239,21 @@ function Menu({ onPageChange }) {
 
   return (
     <div className="menu-container">
-      {page === "menu" ? (
+      {isLoadingState ? (
+        <div className="menu-card">
+          <h1 className="menu-title">Chain Reaction</h1>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '200px',
+            fontSize: '18px',
+            color: '#666'
+          }}>
+            Loading...
+          </div>
+        </div>
+      ) : page === "menu" ? (
         <div className="menu-card">
           {/* Game Title */}
           <h1 className="menu-title">Chain Reaction</h1>
@@ -277,7 +347,7 @@ function Menu({ onPageChange }) {
             </div>
           )}
         </div>
-      ) : (
+      ) : page === "game" ? (
         <>
           <GameBoard 
             row={row} 
@@ -294,7 +364,7 @@ function Menu({ onPageChange }) {
           />
           
         </>
-      )}
+      ) : null}
     </div>
   );
 }

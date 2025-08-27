@@ -50,6 +50,7 @@ const GameBoard = ({
   const [explodingCells, setExplodingCells] = useState(new Set());
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const [gameStartTime, setGameStartTime] = useState(null);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
 
   // Update gamePlayerUsernames when playerUsernames prop changes
   useEffect(() => {
@@ -472,6 +473,49 @@ const GameBoard = ({
     };
   }, [gameId, playerId, mode, row, col, players]);
 
+  // State persistence for game board
+  useEffect(() => {
+    // Load saved game board state on component mount
+    const savedGameBoardState = localStorage.getItem('chainReactionGameBoardState');
+    if (savedGameBoardState) {
+      try {
+        const state = JSON.parse(savedGameBoardState);
+        if (state.cells && state.cells.length > 0) {
+          setCells(state.cells);
+          setCurrentPlayer(state.currentPlayer || 1);
+          setActivePlayers(state.activePlayers || []);
+          setGameState(state.gameState || null);
+        }
+      } catch (error) {
+        console.error('Error loading game board state:', error);
+        localStorage.removeItem('chainReactionGameBoardState');
+      }
+    }
+    // Set loading to false after attempting to load state
+    setIsLoadingBoard(false);
+  }, []);
+
+  // Save game board state whenever relevant state changes
+  useEffect(() => {
+    if (cells.length > 0 && !showModal && !winner) {
+      const gameBoardState = {
+        cells,
+        currentPlayer,
+        activePlayers,
+        gameState,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('chainReactionGameBoardState', JSON.stringify(gameBoardState));
+    }
+  }, [cells, currentPlayer, activePlayers, gameState, showModal, winner]);
+
+  // Clear saved state when game ends (winner is declared)
+  useEffect(() => {
+    if (winner) {
+      localStorage.removeItem('chainReactionGameBoardState');
+    }
+  }, [winner]);
+
   const handleCellClick = (x, y) => {
     // Basic validation: no moves if modal is showing
     if (showModal) return;
@@ -637,6 +681,10 @@ const GameBoard = ({
         socket.emit('exitGame', exitData);
       }
     }
+    
+    // Clear saved game board state when exiting
+    localStorage.removeItem('chainReactionGameBoardState');
+    
     onExit();
   };
 
@@ -715,6 +763,16 @@ const GameBoard = ({
 
   return (
     <div className="game-container">
+      {/* Loading Screen */}
+      {isLoadingBoard ? (
+        <div className="waiting-overlay">
+          <div className="waiting-content">
+            <h2>🎮 Loading Game</h2>
+            <p>Restoring game state...</p>
+          </div>
+        </div>
+      ) : (
+        <div>
       {/* Waiting Screen for Multiplayer */}
       {mode === 'multi' && waitingForPlayers && (
         <div className="waiting-overlay">
@@ -971,6 +1029,8 @@ const GameBoard = ({
               ❌ Cancel
             </button>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

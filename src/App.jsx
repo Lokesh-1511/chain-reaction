@@ -1,16 +1,69 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Menu from './components/Menu'; 
 import UserProfile from './components/UserProfile';
 
-function App() {
+// Game State Manager Component
+function GameStateManager() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentPage, setCurrentPage] = useState("menu");
+  
+  // Load saved game state on mount
+  useEffect(() => {
+    const savedGameState = localStorage.getItem('chainReactionGameState');
+    if (savedGameState) {
+      try {
+        const gameData = JSON.parse(savedGameState);
+        // If there's a saved game and we're on the root, navigate to game
+        if (gameData.gameId && location.pathname === '/' && gameData.timestamp && 
+            (Date.now() - gameData.timestamp < 24 * 60 * 60 * 1000)) { // 24 hours
+          navigate('/game', { replace: true });
+        }
+      } catch (error) {
+        console.error('Failed to parse saved game state:', error);
+        localStorage.removeItem('chainReactionGameState');
+      }
+    }
+  }, [navigate, location.pathname]);
+
+  // Handle page changes and update URL
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    if (page === 'game') {
+      navigate('/game');
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <div className="App">
-      {currentPage === "menu" && <UserProfile />}
-      <Menu onPageChange={setCurrentPage} />
+      <UserProfile />
+      <Routes>
+        <Route 
+          path="/" 
+          element={<Menu onPageChange={handlePageChange} />} 
+        />
+        <Route 
+          path="/game" 
+          element={<Menu onPageChange={handlePageChange} />} 
+        />
+        <Route 
+          path="*" 
+          element={<Navigate to="/" replace />} 
+        />
+      </Routes>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <GameStateManager />
+    </Router>
   );
 }
 

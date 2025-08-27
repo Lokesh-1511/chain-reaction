@@ -4,7 +4,14 @@
   "version": "1.0.0",
   "author": "Lokesh-1511",
   "license": "MIT",
-  "keywords": ["chain-reaction", "game", "multiplayer", "strategy", "react", "firebase"],
+  "keywords": [
+    "chain-reaction",
+    "game",
+    "multiplayer",
+    "strategy",
+    "react",
+    "firebase"
+  ],
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +24,7 @@
     "firebase": "^12.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.8.2",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
