@@ -50,6 +50,7 @@ const GameBoard = ({
   const [explodingCells, setExplodingCells] = useState(new Set());
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const [gameStartTime, setGameStartTime] = useState(null);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
 
   // Update gamePlayerUsernames when playerUsernames prop changes
   useEffect(() => {
@@ -490,6 +491,8 @@ const GameBoard = ({
         localStorage.removeItem('chainReactionGameBoardState');
       }
     }
+    // Set loading to false after attempting to load state
+    setIsLoadingBoard(false);
   }, []);
 
   // Save game board state whenever relevant state changes
@@ -760,6 +763,16 @@ const GameBoard = ({
 
   return (
     <div className="game-container">
+      {/* Loading Screen */}
+      {isLoadingBoard ? (
+        <div className="waiting-overlay">
+          <div className="waiting-content">
+            <h2>🎮 Loading Game</h2>
+            <p>Restoring game state...</p>
+          </div>
+        </div>
+      ) : (
+        <div>
       {/* Waiting Screen for Multiplayer */}
       {mode === 'multi' && waitingForPlayers && (
         <div className="waiting-overlay">
@@ -1016,6 +1029,8 @@ const GameBoard = ({
               ❌ Cancel
             </button>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

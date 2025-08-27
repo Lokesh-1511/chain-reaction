@@ -31,6 +31,7 @@ function Menu({ onPageChange }) {
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
   const [roomCode, setRoomCode] = useState("");
+  const [isLoadingState, setIsLoadingState] = useState(true);
 
   // State persistence logic
   useEffect(() => {
@@ -56,6 +57,7 @@ function Menu({ onPageChange }) {
         localStorage.removeItem('chainReactionGameState');
       }
     }
+    setIsLoadingState(false);
   }, []);
 
   // Save game state whenever relevant state changes
@@ -237,7 +239,21 @@ function Menu({ onPageChange }) {
 
   return (
     <div className="menu-container">
-      {page === "menu" ? (
+      {isLoadingState ? (
+        <div className="menu-card">
+          <h1 className="menu-title">Chain Reaction</h1>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '200px',
+            fontSize: '18px',
+            color: '#666'
+          }}>
+            Loading...
+          </div>
+        </div>
+      ) : page === "menu" ? (
         <div className="menu-card">
           {/* Game Title */}
           <h1 className="menu-title">Chain Reaction</h1>
@@ -331,7 +347,7 @@ function Menu({ onPageChange }) {
             </div>
           )}
         </div>
-      ) : (
+      ) : page === "game" ? (
         <>
           <GameBoard 
             row={row} 
@@ -348,7 +364,7 @@ function Menu({ onPageChange }) {
           />
           
         </>
-      )}
+      ) : null}
     </div>
   );
 }
