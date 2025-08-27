@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Menu from './components/Menu'; 
 import UserProfile from './components/UserProfile';
@@ -9,9 +9,12 @@ function GameStateManager() {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentPage, setCurrentPage] = useState("menu");
+  const hasNavigated = useRef(false);
   
   // Load saved game state on mount
   useEffect(() => {
+    if (hasNavigated.current) return; // Prevent multiple navigations
+    
     const savedGameState = localStorage.getItem('chainReactionGameState');
     if (savedGameState) {
       try {
@@ -19,6 +22,7 @@ function GameStateManager() {
         // If there's a saved game and we're on the root, navigate to game
         if (gameData.gameId && location.pathname === '/' && gameData.timestamp && 
             (Date.now() - gameData.timestamp < 24 * 60 * 60 * 1000)) { // 24 hours
+          hasNavigated.current = true;
           navigate('/game', { replace: true });
         }
       } catch (error) {
@@ -26,7 +30,7 @@ function GameStateManager() {
         localStorage.removeItem('chainReactionGameState');
       }
     }
-  }, [navigate, location.pathname]);
+  }, [navigate]); // Remove location.pathname from dependencies
 
   // Handle page changes and update URL
   const handlePageChange = (page) => {
