@@ -51,6 +51,9 @@ function Menu({ onPageChange }) {
           setIsHost(state.isHost || false);
           setMode(state.mode || 'single');
           setRoomCode(state.roomCode || "");
+          
+          // Add class to body to indicate game is active
+          document.body.classList.add('game-active');
         }
       } catch (error) {
         console.error('Error loading game state:', error);
@@ -78,6 +81,12 @@ function Menu({ onPageChange }) {
         timestamp: Date.now()
       };
       localStorage.setItem('chainReactionGameState', JSON.stringify(gameState));
+      
+      // Add class to body to indicate game is active
+      document.body.classList.add('game-active');
+    } else {
+      // Remove class when not in game
+      document.body.classList.remove('game-active');
     }
   }, [page, size, row, col, players, gameId, playerId, isHost, mode, roomCode]);
   const [playerUsernames, setPlayerUsernames] = useState({});
@@ -139,6 +148,9 @@ function Menu({ onPageChange }) {
     
     // Clear saved game state when exiting
     localStorage.removeItem('chainReactionGameState');
+    
+    // Remove game-active class from body
+    document.body.classList.remove('game-active');
   };
 
   // Socket event handlers for room-based multiplayer

@@ -8,6 +8,11 @@
   z-index: 1000;
 }
 
+/* Hide profile icon when game is active */
+body.game-active .user-profile {
+  display: none !important;
+}
+
 .profile-icon {
   width: 64px;
   height: 64px;
