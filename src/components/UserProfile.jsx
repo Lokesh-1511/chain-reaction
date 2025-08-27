@@ -18,7 +18,7 @@ import {
 } from '../services/userStats';
 import './UserProfile_Clean.css';
 
-const UserProfile = () => {
+const UserProfile = ({ isGameActive = false }) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -41,6 +41,41 @@ const UserProfile = () => {
   const [userRank, setUserRank] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeTab, setActiveTab] = useState('stats'); // 'stats', 'history', 'leaderboard'
+  const [gameActive, setGameActive] = useState(false);
+
+  // Check if game is active by looking at localStorage
+  useEffect(() => {
+    const checkGameState = () => {
+      const savedGameState = localStorage.getItem('chainReactionGameState');
+      const savedGameBoardState = localStorage.getItem('chainReactionGameBoardState');
+      
+      if (savedGameState || savedGameBoardState) {
+        try {
+          const gameState = savedGameState ? JSON.parse(savedGameState) : null;
+          const boardState = savedGameBoardState ? JSON.parse(savedGameBoardState) : null;
+          
+          // Game is active if there's saved state and it indicates an active game
+          const isActive = (gameState && gameState.gameStarted) || 
+                          (boardState && boardState.cells && boardState.cells.length > 0);
+          
+          setGameActive(isActive);
+        } catch (error) {
+          console.error('Error checking game state:', error);
+          setGameActive(false);
+        }
+      } else {
+        setGameActive(false);
+      }
+    };
+
+    // Check initially
+    checkGameState();
+
+    // Set up an interval to check periodically (every 500ms)
+    const interval = setInterval(checkGameState, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -317,7 +352,7 @@ const UserProfile = () => {
 
   return (
     <div className="user-profile">
-      {user ? (
+      {user && !gameActive ? (
         <div className="profile-menu">
           <div className="profile-icon" onClick={() => setShowDashboard(true)}>
             <div className="avatar">
