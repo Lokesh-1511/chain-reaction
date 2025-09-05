@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 const playerColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown'];
 
+/**
+ * Represents a single cell in the game grid.
+ * Handles rendering of orbs and explosion animations.
+ */
 const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding }) => {
   const [showExplosion, setShowExplosion] = useState(false);
   const [explosionOrbs, setExplosionOrbs] = useState([]);
 
+  // This effect triggers the explosion animation when the `isExploding` prop is true.
   useEffect(() => {
     if (isExploding && orb > 0) {
       setShowExplosion(true);
-      // Create explosion orbs that move in 4 directions
       const directions = [
         { x: 0, y: -1, angle: 0 },   // up
         { x: 1, y: 0, angle: 90 },   // right
@@ -25,7 +29,7 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
       
       setExplosionOrbs(newExplosionOrbs);
       
-      // Clear explosion after animation
+      // Clear the explosion animation after it has finished.
       setTimeout(() => {
         setShowExplosion(false);
         setExplosionOrbs([]);
@@ -33,6 +37,9 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
     }
   }, [isExploding, orb, player]);
 
+  /**
+   * Renders the orbs within the cell based on the orb count.
+   */
   const renderOrbs = () => {
     if (orb === 0) return null;
     
@@ -50,7 +57,6 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
     };
     
     if (orb === 1) {
-      // Single circle in center
       return (
         <div
           style={{
@@ -62,7 +68,6 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
         />
       );
     } else if (orb === 2) {
-      // Two intersecting circles
       return (
         <>
           <div
@@ -84,7 +89,6 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
         </>
       );
     } else if (orb === 3) {
-      // Three circles in triangle formation
       return (
         <>
           <div
@@ -116,6 +120,9 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
     }
   };
 
+  /**
+   * Renders the explosion animation.
+   */
   const renderExplosionAnimation = () => {
     if (!showExplosion) return null;
     
@@ -140,27 +147,26 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
     ));
   };
 
-  // Get the current player's color for the glow effect
-  const currentPlayerColor = playerColors[(currentPlayer - 1) % 8];
+  const cellStyle = {
+    width: `${size}px`,
+    height: `${size}px`,
+    borderRadius: '5px',
+    cursor: 'pointer',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    position: 'relative',
+    border: `2px solid ${currentPlayerColor}`,
+    boxShadow: `0 0 15px ${currentPlayerColor}, 0 0 30px ${currentPlayerColor}40`,
+    transition: 'background-color 0.3s, border-color 0.3s',
+  };
 
   return (
     <div
       className="grid-cell"
       onClick={() => onClick(x, y)}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: '5px',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-        position: 'relative',
-        border: `2px solid ${currentPlayerColor}`,
-        boxShadow: `0 0 15px ${currentPlayerColor}, 0 0 30px ${currentPlayerColor}40`,
-        transition: 'box-shadow 0.3s ease-in-out',
-      }}
+      style={cellStyle}
     >
       {renderOrbs()}
       {renderExplosionAnimation()}

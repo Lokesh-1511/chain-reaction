@@ -58,15 +58,13 @@ const GameBoard = ({
     setGamePlayerUsernames(playerUsernames);
   }, [playerUsernames]);
 
-  // Debug logging for modal states
+  // This effect is for debugging modal states.
   useEffect(() => {
-    // Modal state tracking for debugging
   }, [showModal, replayRequested, showReplayWaiting, hasResponded]);
 
-  // Handle winner state changes and update stats
+  // When a winner is declared, update game statistics for multiplayer games.
   useEffect(() => {
     if (winner && gameStartTime && mode === 'multi') {
-      // Only track stats for multiplayer games to prevent cheating
       const gameDuration = Math.floor((Date.now() - gameStartTime) / 60000); // Duration in minutes
       const gameData = {
         winner,
@@ -81,8 +79,6 @@ const GameBoard = ({
       updateGameStats(gameData).catch(error => {
         console.error('Failed to update game stats:', error);
       });
-    } else if (winner && mode === 'single') {
-      console.log('🎮 Single-player game completed - stats not tracked to prevent score manipulation');
     }
   }, [winner, gameStartTime, playerId, row, col, mode, players, roomCode, gameId]);
 

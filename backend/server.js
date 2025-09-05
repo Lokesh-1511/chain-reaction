@@ -26,13 +26,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Request logging middleware (disabled for cleaner output)
-// app.use((req, res, next) => {
-//   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.get('Origin') || 'none'}`);
-//   next();
-// });
-
-// Health check endpoint
+// A health check endpoint to verify that the server is running.
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 

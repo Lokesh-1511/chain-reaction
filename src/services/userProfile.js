@@ -2,14 +2,17 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? 'https://chain-reaction-backend-pml1.onrender.com/api'
   : 'http://localhost:5000/api';
 
-// Create or get user profile
+/**
+ * Creates or retrieves a user profile.
+ * @param {string} username - The user's chosen name.
+ * @param {string} avatar - A URL or identifier for the user's avatar.
+ * @returns {Promise<object>} The user profile data.
+ * @throws {Error} If the network request fails.
+ */
 export const createUserProfile = async (username, avatar) => {
   try {
     const response = await fetch(`${API_URL}/user/profile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+// ... existing code ...
       body: JSON.stringify({ username, avatar }),
     });
 
@@ -20,12 +23,16 @@ export const createUserProfile = async (username, avatar) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Failed to create user profile:', error);
     throw error;
   }
 };
 
-// Get user profile
+/**
+ * Retrieves a user's profile by their ID.
+ * @param {string} userId - The unique identifier for the user.
+ * @returns {Promise<object>} The user profile data.
+ * @throws {Error} If the network request fails.
+ */
 export const getUserProfile = async (userId) => {
   try {
     const response = await fetch(`${API_URL}/user/${userId}`);
@@ -37,19 +44,21 @@ export const getUserProfile = async (userId) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Failed to get user profile:', error);
     throw error;
   }
 };
 
-// Update user stats
+/**
+ * Updates a user's game statistics.
+ * @param {string} userId - The unique identifier for the user.
+ * @param {boolean} won - Whether the user won the game.
+ * @returns {Promise<object>} The updated user statistics.
+ * @throws {Error} If the network request fails.
+ */
 export const updateUserStats = async (userId, won = false) => {
   try {
     const response = await fetch(`${API_URL}/user/${userId}/stats`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+// ... existing code ...
       body: JSON.stringify({ won }),
     });
 
@@ -60,34 +69,42 @@ export const updateUserStats = async (userId, won = false) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Failed to update user stats:', error);
     throw error;
   }
 };
 
-// Local storage helpers
+/**
+ * Retrieves the user object from local storage.
+ * @returns {object|null} The user object or null if not found or on error.
+ */
 export const getUserFromStorage = () => {
   try {
     const user = localStorage.getItem('chainReactionUser');
     return user ? JSON.parse(user) : null;
   } catch (error) {
-    console.error('Error getting user from storage:', error);
     return null;
   }
 };
 
+/**
+ * Saves the user object to local storage.
+ * @param {object} user - The user object to save.
+ */
 export const saveUserToStorage = (user) => {
   try {
     localStorage.setItem('chainReactionUser', JSON.stringify(user));
   } catch (error) {
-    console.error('Error saving user to storage:', error);
+    // Fails silently if storage is unavailable.
   }
 };
 
+/**
+ * Removes the user object from local storage.
+ */
 export const clearUserFromStorage = () => {
   try {
     localStorage.removeItem('chainReactionUser');
   } catch (error) {
-    console.error('Error clearing user from storage:', error);
+    // Fails silently if storage is unavailable.
   }
 };

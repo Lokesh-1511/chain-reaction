@@ -60,7 +60,7 @@ const UserProfile = ({ isGameActive = false }) => {
           
           setGameActive(isActive);
         } catch (error) {
-          console.error('Error checking game state:', error);
+          // Silently fail if there's an error parsing, as it's not critical.
           setGameActive(false);
         }
       } else {
@@ -137,8 +137,6 @@ const UserProfile = ({ isGameActive = false }) => {
         });
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
-      
       // More specific error messages based on error type
       if (error.code === 'permission-denied') {
         setError('Please log in to access your profile data');
@@ -215,7 +213,7 @@ const UserProfile = ({ isGameActive = false }) => {
       setShowDashboard(false);
       setShowModal(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      setError('Logout failed: ' + error.message);
     }
   };
 
@@ -902,13 +900,10 @@ export const getCurrentUsername = () => {
   return currentUser.displayName || currentUser.email?.split('@')[0] || 'Player';
 };
 
-// Export function to update game stats (legacy compatibility)
-// Only for multiplayer games to prevent score manipulation
+// This function is kept for backward compatibility but warns that only multiplayer stats are tracked.
 export const updateGameStatsLegacy = async (won = false) => {
-  console.warn('⚠️ Legacy updateGameStats called - single-player games are not tracked for competitive integrity');
-  console.log('💡 Only multiplayer games count towards statistics to prevent score manipulation');
-  
-  // Don't update stats for legacy calls (likely single-player)
+  // This function is intentionally left to do nothing for single-player games
+  // to ensure competitive integrity of user statistics.
   return;
 };
 
