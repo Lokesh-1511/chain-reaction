@@ -1,12 +1,12 @@
 import { io } from 'socket.io-client';
 import { getCurrentUsername } from '../components/UserProfile';
 
-// Use localhost for development, Render for production
+// Dynamically set the backend URL based on the environment.
 const BACKEND_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:5000' 
   : 'https://chain-reaction-backend-pml1.onrender.com';
 
-// Configure socket with better options for production
+// Configure the socket connection with settings optimized for production.
 const socket = io(BACKEND_URL, {
   transports: ['websocket', 'polling'],
   timeout: 20000,
@@ -17,38 +17,35 @@ const socket = io(BACKEND_URL, {
   maxReconnectionAttempts: 5
 });
 
-// Add connection event listeners for debugging
-socket.on('connect', () => {
-  // Connected to backend server
-});
+// These event listeners are for debugging connection status.
+socket.on('connect', () => {});
+socket.on('disconnect', (reason) => {});
+socket.on('connect_error', (error) => {});
+socket.on('reconnect', (attemptNumber) => {});
+socket.on('reconnect_error', (error) => {});
 
-socket.on('disconnect', (reason) => {
-  // Disconnected from backend server
-});
-
-socket.on('connect_error', (error) => {
-  // Connection error
-});
-
-socket.on('reconnect', (attemptNumber) => {
-  // Reconnected to backend server
-});
-
-socket.on('reconnect_error', (error) => {
-  // Reconnection error
-});
-
-// Enhanced socket functions for multiplayer with usernames
+/**
+ * Emits a 'joinRoom' event to the server with the room code and current user's username.
+ * @param {string} roomCode - The code of the room to join.
+ */
 export const joinRoom = (roomCode) => {
   const username = getCurrentUsername();
   socket.emit('joinRoom', { roomCode, username });
 };
 
+/**
+ * Emits a 'createRoom' event to the server to create a new multiplayer room.
+ */
 export const createRoom = () => {
   const username = getCurrentUsername();
   socket.emit('createRoom', { username });
 };
 
+/**
+ * Emits a 'makeMove' event to the server with the move details.
+ * @param {string} roomCode - The room where the move is made.
+ * @param {object} move - The move object.
+ */
 export const makeMove = (roomCode, move) => {
   const username = getCurrentUsername();
   socket.emit('makeMove', { roomCode, move, username });
