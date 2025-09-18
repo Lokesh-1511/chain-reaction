@@ -16,7 +16,7 @@ import {
   getLeaderboard,
   updateGameStats as updateGameStatsService
 } from '../services/userStats';
-import './UserProfile_Clean.css';
+import './UserProfile_Clean.css?v=3';
 
 const UserProfile = ({ isGameActive = false }) => {
   const [user, setUser] = useState(null);

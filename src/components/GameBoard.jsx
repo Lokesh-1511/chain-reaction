@@ -17,7 +17,8 @@ const GameBoard = ({
   isHost, 
   roomCode, 
   playerUsernames = {}, 
-  waitingForPlayers = false 
+  waitingForPlayers = false,
+  isOnline = true
 }) => {
   // Helper function to get maximum tokens a cell can hold
   const getMaxTokens = (row, col, totalRows, totalCols) => {
@@ -260,6 +261,7 @@ const GameBoard = ({
       setCells(initialState.grid);
       setCurrentPlayer(1);
       setActivePlayers(initialState.activePlayers);
+      setIsLoadingBoard(false);
       return;
     }
     
@@ -838,7 +840,7 @@ const GameBoard = ({
           </div>
         </div>
       ) : (
-        <div>
+        <>
       {/* Waiting Screen for Multiplayer */}
       {mode === 'multi' && waitingForPlayers && (
         <div className="waiting-overlay">
@@ -1097,7 +1099,7 @@ const GameBoard = ({
           </div>
         </div>
       )}
-        </div>
+        </>
       )}
     </div>
   );
