@@ -10,7 +10,7 @@
 .App::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }
-.mrnu
+
 .game-board {
   margin-top: 20px;
   display: flex;

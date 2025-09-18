@@ -1,3 +1,22 @@
+/* ==================== BROWSER COMPATIBILITY FIXES ==================== */
+
+/* Ensure consistent box-sizing across browsers */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Force hardware acceleration for smooth animations */
+.profile-icon,
+.modal-overlay,
+.dashboard-modal {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 /* ==================== IMPROVED MODERN DASHBOARD ==================== */
 
 /* Keep existing profile button styles but enhance */
@@ -79,6 +98,9 @@ body.game-active .user-profile {
     rgba(15, 23, 42, 0.95) 50%,
     rgba(30, 41, 59, 0.9) 100%
   );
+  /* Fallback for browsers without backdrop-filter support */
+  background: rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
   backdrop-filter: blur(25px) saturate(180%);
   z-index: 2000;
   display: flex;
@@ -91,11 +113,24 @@ body.game-active .user-profile {
 @keyframes modalFadeIn {
   from { 
     opacity: 0; 
+    -webkit-backdrop-filter: blur(0px);
     backdrop-filter: blur(0px);
   }
   to { 
     opacity: 1; 
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
     backdrop-filter: blur(25px) saturate(180%);
+  }
+}
+
+@-webkit-keyframes modalFadeIn {
+  from { 
+    opacity: 0; 
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to { 
+    opacity: 1; 
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
   }
 }
 
@@ -1936,6 +1971,7 @@ body.game-active .user-profile {
 
 .auth-modal {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -1945,6 +1981,48 @@ body.game-active .user-profile {
   max-height: 80vh;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+.auth-modal .modal-header {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auth-modal .modal-header h3 {
+  color: white;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-modal .close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.auth-modal .close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: scale(1.1);
 }
 
 .auth-form {
@@ -2006,10 +2084,37 @@ body.game-active .user-profile {
   cursor: pointer;
   text-decoration: underline;
   font-size: 0.9rem;
+  transition: color 0.3s ease;
 }
 
 .auth-form .toggle-btn:hover {
   color: #93c5fd;
+}
+
+/* Error message styling */
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Toggle mode section */
+.toggle-mode {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.toggle-mode p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
 }
 
 /* Utility Classes */

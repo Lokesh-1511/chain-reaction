@@ -1,13 +1,25 @@
 {
   "name": "Chain Reaction - Explosive Strategy Game",
   "short_name": "Chain Reaction",
-  "description": "An explosive multiplayer strategy game where chain reactions determine victory",
+  "description": "An explosive multiplayer strategy game where chain reactions determine victory. Play online or offline!",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1a1a1a",
   "theme_color": "#ff6b6b",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "categories": ["games", "entertainment"],
+  "lang": "en",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/chain-reaction-icon.svg",
+      "sizes": "1280x720",
+      "type": "image/svg+xml",
+      "platform": "wide",
+      "label": "Chain Reaction Game Screenshot"
+    }
+  ],
   "icons": [
     {
       "src": "/chain-reaction-icon.svg",
@@ -35,5 +47,10 @@
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
+  ],
+  "features": [
+    "offline-support",
+    "local-multiplayer",
+    "cross-platform"
   ]
 }

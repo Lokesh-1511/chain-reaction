@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './GridCell.css';
 
 const playerColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown'];
 
@@ -157,8 +158,8 @@ const GridCell = ({ orb, player, onClick, x, y, size, currentPlayer, isExploding
     alignItems: 'center',
     backgroundColor: 'transparent',
     position: 'relative',
-    border: `2px solid ${currentPlayerColor}`,
-    boxShadow: `0 0 15px ${currentPlayerColor}, 0 0 30px ${currentPlayerColor}40`,
+    border: `2px solid ${player > 0 ? playerColors[(player - 1) % 8] : '#333'}`,
+    boxShadow: player > 0 ? `0 0 15px ${playerColors[(player - 1) % 8]}, 0 0 30px ${playerColors[(player - 1) % 8]}40` : 'none',
     transition: 'background-color 0.3s, border-color 0.3s',
   };
 

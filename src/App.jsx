@@ -3,13 +3,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Menu from './components/Menu'; 
 import UserProfile from './components/UserProfile';
+import { offlineDetector, showOfflineNotification, showOnlineNotification } from './services/offlineDetector';
 
 // Game State Manager Component
 function GameStateManager() {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentPage, setCurrentPage] = useState("menu");
+  const [isOnline, setIsOnline] = useState(offlineDetector.isOnline);
   const hasNavigated = useRef(false);
+  
+  // Handle offline/online status changes
+  useEffect(() => {
+    const removeListener = offlineDetector.addListener((status, online) => {
+      setIsOnline(online);
+      
+      if (online) {
+        showOnlineNotification();
+      } else {
+        showOfflineNotification();
+      }
+    });
+
+    return removeListener;
+  }, []);
   
   // Load saved game state on mount
   useEffect(() => {
@@ -44,15 +61,34 @@ function GameStateManager() {
 
   return (
     <div className="App">
+      {/* Offline indicator */}
+      {!isOnline && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(90deg, #ff6b6b, #ff8e8e)',
+          color: 'white',
+          padding: '8px',
+          textAlign: 'center',
+          fontSize: '14px',
+          fontWeight: '600',
+          zIndex: 1000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        }}>
+          📱 Offline Mode - Multiplayer features unavailable
+        </div>
+      )}
       <UserProfile />
       <Routes>
         <Route 
           path="/" 
-          element={<Menu onPageChange={handlePageChange} />} 
+          element={<Menu onPageChange={handlePageChange} isOnline={isOnline} />} 
         />
         <Route 
           path="/game" 
-          element={<Menu onPageChange={handlePageChange} />} 
+          element={<Menu onPageChange={handlePageChange} isOnline={isOnline} />} 
         />
         <Route 
           path="*" 
