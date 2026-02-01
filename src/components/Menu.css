@@ -221,6 +221,32 @@ select.game-select option {
   opacity: 0.6;
 }
 
+/* Bot Button */
+.bot-button {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border: none;
+  color: white;
+  padding: 12px 32px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  min-width: 180px;
+  margin-top: 12px;
+}
+
+.bot-button:hover {
+  background: linear-gradient(45deg, #764ba2, #667eea);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.bot-button:active {
+  transform: translateY(0);
+}
+
 /* Multiplayer Section */
 .multiplayer-section {
   margin-top: 20px;

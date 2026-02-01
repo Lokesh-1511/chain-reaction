@@ -4,6 +4,7 @@ import socket from '../services/socket';
 import { getGameState } from '../services/api';
 import { updateGameStats } from '../services/userStats';
 import { getCurrentUsername } from './UserProfile';
+import ChainReactionBot from '../ai/chainReactionBot';
 import './GameBoard.css';
 
 const GameBoard = ({ 
@@ -18,7 +19,8 @@ const GameBoard = ({
   roomCode, 
   playerUsernames = {}, 
   waitingForPlayers = false,
-  isOnline = true
+  isOnline = true,
+  botDifficulty: propBotDifficulty = 'medium'
 }) => {
   // Helper function to get maximum tokens a cell can hold
   const getMaxTokens = (row, col, totalRows, totalCols) => {
@@ -53,11 +55,105 @@ const GameBoard = ({
   const [gamePlayerUsernames, setGamePlayerUsernames] = useState(playerUsernames);
   const [gameStartTime, setGameStartTime] = useState(null);
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
+  
+  // Bot AI state
+  const [botPlayer, setBotPlayer] = useState(mode === 'bot' ? 2 : null);
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  const [botDifficulty, setBotDifficulty] = useState(propBotDifficulty || 'medium');
+  const [lastBotMoveTime, setLastBotMoveTime] = useState(0);
+  const botRef = useRef(null);
 
   // Update gamePlayerUsernames when playerUsernames prop changes
   useEffect(() => {
     setGamePlayerUsernames(playerUsernames);
   }, [playerUsernames]);
+
+  // Initialize bot if mode is 'bot'
+  useEffect(() => {
+    if (mode === 'bot' && !botRef.current) {
+      const difficulty = propBotDifficulty || botDifficulty || 'medium';
+      botRef.current = new ChainReactionBot(difficulty);
+      setBotPlayer(2);
+      setBotDifficulty(difficulty);
+      console.log(`🤖 Bot initialized with ${difficulty} difficulty`);
+    }
+  }, [mode, propBotDifficulty]);
+
+  // Bot move handler - triggers when it's bot's turn
+  useEffect(() => {
+    if (mode === 'bot' && botPlayer && currentPlayer === botPlayer && !winner && !isBotThinking && cells && cells.length > 0) {
+      // Add cooldown to prevent rapid repeated moves
+      const now = Date.now();
+      if (now - lastBotMoveTime > 300) {
+        console.log('🤖 Bot turn detected, making move...');
+        handleBotMove();
+      }
+    }
+  }, [currentPlayer, botPlayer, winner, isBotThinking, mode, cells, lastBotMoveTime]);
+
+  const handleBotMove = async () => {
+    if (isBotThinking) return; // Prevent multiple simultaneous bot moves
+    
+    setIsBotThinking(true);
+    setLastBotMoveTime(Date.now());
+    console.log('🤖 Bot is thinking...');
+    
+    const currentGameState = {
+      grid: cells,
+      row: displayRow,
+      col: displayCol,
+      currentPlayer: currentPlayer,
+      activePlayers: activePlayers
+    };
+
+    try {
+      // Get bot difficulty config for think time
+      const config = botRef.current.getDifficultyConfig(botDifficulty);
+      
+      // Add timeout protection (slightly longer than think time)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Bot timeout')), Math.max(config.thinkTime + 500, 6000))
+      );
+      
+      const movePromise = botRef.current.getNextMove(currentGameState, botPlayer);
+      const move = await Promise.race([movePromise, timeoutPromise]);
+      
+      console.log('🤖 Bot selected move:', move);
+      
+      if (move) {
+        // Try to apply bot move directly
+        const applied = applyLocalMove(move.x, move.y, { isBotMove: true });
+        if (!applied) {
+          console.warn('🤖 Bot move invalid, selecting fallback move');
+          const fallbackState = {
+            grid: cells,
+            row: displayRow,
+            col: displayCol,
+            players: players,
+            currentPlayer: currentPlayer,
+            activePlayers: activePlayers,
+            playersMoved: [],
+            winner: null,
+            status: 'active',
+          };
+          const validMoves = getValidMoves(fallbackState, botPlayer);
+          if (validMoves.length > 0) {
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            applyLocalMove(randomMove.x, randomMove.y, { isBotMove: true });
+          } else {
+            console.warn('🤖 No valid moves available for bot');
+            setIsBotThinking(false);
+          }
+        }
+      } else {
+        console.warn('🤖 Bot returned no valid move');
+        setIsBotThinking(false);
+      }
+    } catch (error) {
+      console.error('🤖 Bot move error:', error);
+      setIsBotThinking(false);
+    }
+  };
 
   // This effect is for debugging modal states.
   useEffect(() => {
@@ -85,6 +181,10 @@ const GameBoard = ({
 
   // Helper function to get player display name
   const getPlayerDisplayName = (playerId) => {
+    if (!playerId) return 'Unknown Player';
+    if (mode === 'bot' && playerId === botPlayer) {
+      return '🤖 Bot';
+    }
     if (mode === 'multi' && gamePlayerUsernames[playerId]) {
       return gamePlayerUsernames[playerId];
     }
@@ -107,40 +207,63 @@ const GameBoard = ({
       cell.player = playerId;
     }
     
-    // Process explosions
-    let explosionsOccurred;
-    do {
-      explosionsOccurred = false;
-      const explosionQueue = [];
-      for (let i = 0; i < newState.row; i++) {
-        for (let j = 0; j < newState.col; j++) {
-          if (newState.grid[i][j].value > newState.grid[i][j].max_value) {
-            explosionQueue.push({ i, j });
-          }
+    // Ensure max_value is always initialized (prevents endless reactions)
+    for (let i = 0; i < newState.row; i++) {
+      for (let j = 0; j < newState.col; j++) {
+        const cellToNormalize = newState.grid[i][j];
+        if (cellToNormalize.max_value == null || cellToNormalize.max_value <= 0) {
+          cellToNormalize.max_value = getMaxTokens(i, j, newState.row, newState.col);
         }
       }
-      if (explosionQueue.length > 0) {
-        explosionsOccurred = true;
-        for (const { i, j } of explosionQueue) {
-          const explodingCell = newState.grid[i][j];
-          explodingCell.value = 0;
-          explodingCell.player = 0;
-          const directions = [
-            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
-            { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
-          ];
-          for (const { dx, dy } of directions) {
-            const nx = i + dx;
-            const ny = j + dy;
-            if (nx >= 0 && nx < newState.row && ny >= 0 && ny < newState.col) {
-              const neighbor = newState.grid[nx][ny];
-              neighbor.value++;
-              neighbor.player = playerId;
+    }
+
+    // Process explosions using a queue (guarantees termination)
+    const explosionQueue = [];
+    const inQueue = new Set();
+
+    for (let i = 0; i < newState.row; i++) {
+      for (let j = 0; j < newState.col; j++) {
+        if (newState.grid[i][j].value > newState.grid[i][j].max_value) {
+          const key = `${i}-${j}`;
+          explosionQueue.push({ i, j });
+          inQueue.add(key);
+        }
+      }
+    }
+
+    while (explosionQueue.length > 0) {
+      const { i, j } = explosionQueue.shift();
+      inQueue.delete(`${i}-${j}`);
+
+      const explodingCell = newState.grid[i][j];
+      if (explodingCell.value <= explodingCell.max_value) continue;
+
+      explodingCell.value = 0;
+      explodingCell.player = 0;
+
+      const directions = [
+        { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+        { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+      ];
+
+      for (const { dx, dy } of directions) {
+        const nx = i + dx;
+        const ny = j + dy;
+        if (nx >= 0 && nx < newState.row && ny >= 0 && ny < newState.col) {
+          const neighbor = newState.grid[nx][ny];
+          neighbor.value++;
+          neighbor.player = playerId;
+
+          if (neighbor.value > neighbor.max_value) {
+            const key = `${nx}-${ny}`;
+            if (!inQueue.has(key)) {
+              explosionQueue.push({ i: nx, j: ny });
+              inQueue.add(key);
             }
           }
         }
       }
-    } while (explosionsOccurred);
+    }
     
     // Add to moved players if not already
     if (!newState.playersMoved.includes(playerId)) {
@@ -225,13 +348,11 @@ const GameBoard = ({
   }, [row, col, gameState]);
 
   useEffect(() => {
-    if (!gameId) return;
-    
     // Set game start time when component mounts
     setGameStartTime(Date.now());
-    
-    // For singleplayer, only initialize the game state locally
-    if (mode === 'single') {
+
+    // For local/single/bot, initialize even if gameId is missing (prevents stuck loading after restart)
+    if (mode === 'single' || mode === 'bot' || mode === 'local') {
       const initialState = {
         grid: Array(row).fill().map((_, i) => 
           Array(col).fill().map((_, j) => {
@@ -264,6 +385,8 @@ const GameBoard = ({
       setIsLoadingBoard(false);
       return;
     }
+
+    if (!gameId) return;
     
     // For multiplayer, handle server connections and rejoining
     if (mode === 'multi' && roomCode) {
@@ -543,12 +666,24 @@ const GameBoard = ({
 
   // State persistence for game board
   useEffect(() => {
-    // Load saved game board state on component mount
+    // Disable restore for local/single/bot to prevent stale stuck state
+    if (mode === 'local' || mode === 'single' || mode === 'bot') {
+      localStorage.removeItem('chainReactionGameBoardState');
+      setIsLoadingBoard(false);
+      return;
+    }
+
+    // Load saved game board state on component mount (multiplayer only)
     const savedGameBoardState = localStorage.getItem('chainReactionGameBoardState');
     if (savedGameBoardState) {
       try {
         const state = JSON.parse(savedGameBoardState);
-        if (state.cells && state.cells.length > 0) {
+
+        // If saved state doesn't match this game or is stale, clear it
+        const isStale = state.timestamp && Date.now() - state.timestamp > 30 * 60 * 1000;
+        if ((state.gameId && gameId && state.gameId !== gameId) || isStale) {
+          localStorage.removeItem('chainReactionGameBoardState');
+        } else if (state.cells && state.cells.length > 0) {
           setCells(state.cells);
           setCurrentPlayer(state.currentPlayer || 1);
           setActivePlayers(state.activePlayers || []);
@@ -561,21 +696,26 @@ const GameBoard = ({
     }
     // Set loading to false after attempting to load state
     setIsLoadingBoard(false);
-  }, []);
+  }, [mode, gameId]);
 
   // Save game board state whenever relevant state changes
   useEffect(() => {
+    // Disable saving for local/single/bot to prevent stale stuck state
+    if (mode === 'local' || mode === 'single' || mode === 'bot') return;
+
     if (cells.length > 0 && !showModal && !winner) {
       const gameBoardState = {
         cells,
         currentPlayer,
         activePlayers,
         gameState,
+        gameId,
+        mode,
         timestamp: Date.now()
       };
       localStorage.setItem('chainReactionGameBoardState', JSON.stringify(gameBoardState));
     }
-  }, [cells, currentPlayer, activePlayers, gameState, showModal, winner]);
+  }, [cells, currentPlayer, activePlayers, gameState, showModal, winner, gameId, mode]);
 
   // Clear saved state when game ends (winner is declared)
   useEffect(() => {
@@ -584,51 +724,88 @@ const GameBoard = ({
     }
   }, [winner]);
 
-  const handleCellClick = (x, y) => {
+  const getValidMoves = (state, playerIdToCheck) => {
+    const validMoves = [];
+    for (let i = 0; i < state.row; i++) {
+      for (let j = 0; j < state.col; j++) {
+        const cell = state.grid[i][j];
+        if (cell.value === 0 || cell.player === playerIdToCheck) {
+          validMoves.push({ x: i, y: j });
+        }
+      }
+    }
+    return validMoves;
+  };
+
+  const applyLocalMove = (x, y, { isBotMove = false } = {}) => {
     // Basic validation: no moves if modal is showing
-    if (showModal) return;
-    
+    if (showModal) return false;
+
     // In local mode, only check for surrendered state in multiplayer
-    if (mode === 'multi' && hasSurrendered) return;
-    
-    // In single player mode, handle moves locally
-    if (mode === 'single') {
-      // Create a local copy of the current game state
-      const currentState = gameState || {
-        grid: cells,
-        row: displayRow,
-        col: displayCol,
-        players: players,
-        currentPlayer: currentPlayer,
-        activePlayers: activePlayers,
-        playersMoved: [],
-        winner: null,
-        status: 'active',
-      };
-      
-      // Check if move is valid
-      if (x < 0 || x >= currentState.row || y < 0 || y >= currentState.col) return;
-      const cell = currentState.grid[x][y];
-      if (cell.value !== 0 && cell.player !== currentState.currentPlayer) return;
-      
+    if (mode === 'multi' && hasSurrendered) return false;
+
+    // Only handle local/single/bot here
+    if (!(mode === 'local' || mode === 'single' || mode === 'bot')) return false;
+
+    // Block human clicks while bot is thinking
+    if (!isBotMove && mode === 'bot' && isBotThinking) return false;
+
+    // Create a local copy of the current game state
+    const currentState = gameState || {
+      grid: cells,
+      row: displayRow,
+      col: displayCol,
+      players: players,
+      currentPlayer: currentPlayer,
+      activePlayers: activePlayers,
+      playersMoved: [],
+      winner: null,
+      status: 'active',
+    };
+
+    // Check if move is valid
+    if (x < 0 || x >= currentState.row || y < 0 || y >= currentState.col) return false;
+    const cell = currentState.grid[x][y];
+    if (cell.value !== 0 && cell.player !== currentState.currentPlayer) return false;
+
+    try {
       // Apply move locally
       const newState = applyMoveLocally(currentState, { x, y }, currentState.currentPlayer);
-      
+
+      console.log(`✅ Move applied: Player ${currentState.currentPlayer} -> (${x}, ${y}), Next player: ${newState.currentPlayer}`);
+
       // Update state
       setGameState(newState);
       setCells(newState.grid);
       setCurrentPlayer(newState.currentPlayer);
       setActivePlayers(newState.activePlayers);
-      
+
+      // Reset bot thinking flag if the bot just made a move
+      if (mode === 'bot' && currentState.currentPlayer === botPlayer) {
+        console.log('🤖 Bot move completed, resetting thinking flag');
+        setIsBotThinking(false);
+      }
+
       // Check for game over
       if (newState.status === 'finished') {
+        console.log('🏆 Game finished! Winner:', newState.winner, 'Active players:', newState.activePlayers);
         setWinner(newState.winner);
         setShowModal(true);
       }
-      
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error applying move:', error);
+      return false;
+    }
+  };
+
+  const handleCellClick = (x, y) => {
+    if (mode === 'local' || mode === 'single' || mode === 'bot') {
+      applyLocalMove(x, y, { isBotMove: false });
       return;
     }
-    
+
     // In multiplayer mode, only allow moves if it's the player's turn
     // Exception: if only 1 active player, allow them to play
     if (mode === 'multi') {
@@ -664,8 +841,8 @@ const GameBoard = ({
 
   const handleReplay = () => {
     console.log(`🎯 HandleReplay called: mode=${mode}, gameId=${gameId}, roomCode=${roomCode}, playerId=${playerId}`);
-    if (mode === 'single') {
-      // For singleplayer, restart the game locally without reloading the page
+    if (mode === 'local' || mode === 'single' || mode === 'bot') {
+      // For local, singleplayer and bot mode, restart the game locally without reloading the page
       const newState = {
         grid: Array(displayRow).fill().map((_, i) => 
           Array(displayCol).fill().map((_, j) => {
@@ -753,6 +930,10 @@ const GameBoard = ({
     
     // Clear saved game board state when exiting
     localStorage.removeItem('chainReactionGameBoardState');
+
+    // Reset local UI state
+    setShowModal(false);
+    setWinner(null);
     
     onExit();
   };
@@ -826,6 +1007,7 @@ const GameBoard = ({
     setShowSurrenderConfirm(false);
   };
 
+
   // Use backend state for row/col if available
   const displayRow = gameState?.row || row;
   const displayCol = gameState?.col || col;
@@ -891,8 +1073,12 @@ const GameBoard = ({
           ></div>
           <span>Current Turn: {getPlayerDisplayName(currentPlayer)}</span>
         </div>
+        <div className="bot-thinking-indicator" style={{ visibility: isBotThinking ? 'visible' : 'hidden' }}>
+          🤖 Bot is thinking...
+        </div>
 
         <div className="controls-row">
+
           {/* Room Code Display for Multiplayer - Left */}
           {mode === 'multi' && (roomCode || gameId) ? (
             <div className="room-code-display">
@@ -981,7 +1167,7 @@ const GameBoard = ({
       </div>
       
       {/* Modals and overlays */}
-      {showModal && (
+      {showModal && winner && (
         <div className="modal-overlay">
           <div className="modal-content">
             {hasSurrendered ? (
@@ -999,10 +1185,10 @@ const GameBoard = ({
               </>
             )}
             <button onClick={handleReplay} className="button button-replay">
-              {mode === 'single' ? '🔄 Play Again' : '🔄 Request Replay'}
+              {(mode === 'single' || mode === 'bot' || mode === 'local') ? '🔄 Play Again' : '🔄 Request Replay'}
             </button>
             <button onClick={handleExit} className="button button-exit">
-              {mode === 'single' ? 'Exit to Menu' : 'Leave Game'}
+              {(mode === 'single' || mode === 'bot' || mode === 'local') ? 'Exit to Menu' : 'Leave Game'}
             </button>
           </div>
         </div>
@@ -1072,14 +1258,14 @@ const GameBoard = ({
       {showSurrenderConfirm && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>{mode === 'single' ? 'Surrender Game' : 'Surrender Game'}</h2>
-            <p>Are you sure you want to {mode === 'single' ? 'surrender and be eliminated from the game' : 'surrender'}?</p>
+            <h2>Surrender Game</h2>
+            <p>Are you sure you want to {(mode === 'single' || mode === 'bot' || mode === 'local') ? 'surrender and be eliminated from the game' : 'surrender'}?</p>
             {mode === 'multi' && (
               <p style={{ fontSize: '14px', opacity: 0.8 }}>
                 {isHost ? 'As the host, surrendering will close the game for all players.' : 'You will leave the game and other players will continue.'}
               </p>
             )}
-            {mode === 'single' && (
+            {(mode === 'single' || mode === 'bot' || mode === 'local') && (
               <p style={{ fontSize: '14px', opacity: 0.8 }}>
                 You will be eliminated and the remaining players will continue playing locally.
               </p>

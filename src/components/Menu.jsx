@@ -5,6 +5,7 @@ import { createGame, joinGame } from '../services/api';
 import socket, { createRoom, joinRoom } from '../services/socket';
 import { getCurrentUsername } from './UserProfile';
 import CustomSelect from "./CustomSelect";
+import BotDifficultySelector from "./BotDifficultySelector";
 import "./Menu.css";
 
 const boardSizes = {
@@ -25,7 +26,7 @@ function Menu({ onPageChange, isOnline = true }) {
   const [gameId, setGameId] = useState("");
   const [playerId, setPlayerId] = useState(null);
   const [isHost, setIsHost] = useState(false);
-  const [mode, setMode] = useState('single');
+  const [mode, setMode] = useState('local');
   const [joinGameId, setJoinGameId] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -96,6 +97,8 @@ function Menu({ onPageChange, isOnline = true }) {
   }, [page, size, row, col, players, gameId, playerId, isHost, mode, roomCode]);
   const [playerUsernames, setPlayerUsernames] = useState({});
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
+  const [showBotSelector, setShowBotSelector] = useState(false);
+  const [botDifficulty, setBotDifficulty] = useState('medium');
 
   // Options for custom selects
   const sizeOptions = [
@@ -105,7 +108,8 @@ function Menu({ onPageChange, isOnline = true }) {
   ];
 
   const modeOptions = [
-    { value: 'single', label: isMobile ? '🏠 Local' : '🏠 Local Mode' },
+    { value: 'local', label: isMobile ? '🏠 Local' : '🏠 Local Mode (Pass & Play)' },
+    { value: 'single', label: isMobile ? '🤖 vs Bot' : '🤖 Singleplayer (vs Bot)' },
     ...(isOnline ? [{ value: 'multi', label: isMobile ? '🌐 Online' : '🌐 Online Multiplayer' }] : [])
   ];
 
@@ -137,10 +141,16 @@ function Menu({ onPageChange, isOnline = true }) {
   const handleModeChange = (e) => {
     const selectedMode = e.target.value;
     
-    // If offline and trying to select multiplayer, force to single player
+    // If offline and trying to select multiplayer, force to local
     if (!isOnline && selectedMode === 'multi') {
-      setMode('single');
+      setMode('local');
       setError("Multiplayer is not available offline. Playing in local mode.");
+      return;
+    }
+    
+    // If singleplayer (bot mode) selected, show difficulty selector
+    if (selectedMode === 'single') {
+      setShowBotSelector(true);
       return;
     }
     
@@ -215,19 +225,22 @@ function Menu({ onPageChange, isOnline = true }) {
       return;
     }
 
-    // Force single player mode if offline
+    // Force local mode if offline
     if (!isOnline && mode === 'multi') {
-      setMode('single');
+      setMode('local');
       setError("You're offline. Starting local game instead.");
     }
 
     try {
-      if (mode === 'single' || !isOnline) {
-        // For single player or offline mode, use local game logic
+      if (mode === 'local' || !isOnline) {
+        // For local mode (pass & play), use local game logic
         setGameId('local-' + Date.now());
         setPlayerId(1);
         setIsHost(true);
         setPage("game");
+      } else if (mode === 'single') {
+        // For singleplayer, show bot difficulty selector first
+        setShowBotSelector(true);
       } else {
         // For multiplayer, use room-based system
         createRoom();
@@ -235,6 +248,21 @@ function Menu({ onPageChange, isOnline = true }) {
     } catch (e) {
       setError("Could not start game.");
     }
+  };
+
+  const handleBotModeSelect = () => {
+    setShowBotSelector(true);
+  };
+
+  const handleBotDifficultySelect = (difficulty) => {
+    setBotDifficulty(difficulty);
+    setShowBotSelector(false);
+    // Start game with bot mode
+    setMode('bot');
+    setGameId('bot-' + Date.now());
+    setPlayerId(1);
+    setIsHost(true);
+    setPage("game");
   };
 
   const handleJoinGame = async () => {
@@ -331,7 +359,7 @@ function Menu({ onPageChange, isOnline = true }) {
               disabled={players < 2 || players > 8}
               className="start-button"
             >
-              Start Game
+              {mode === 'local' ? 'Start Local Game' : mode === 'single' ? 'Select Bot Difficulty' : 'Create Room'}
             </button>
 
             {/* Multiplayer Section */}
@@ -382,10 +410,21 @@ function Menu({ onPageChange, isOnline = true }) {
             playerUsernames={playerUsernames}
             waitingForPlayers={waitingForPlayers}
             isOnline={isOnline}
+            botDifficulty={botDifficulty}
           />
-          
         </>
       ) : null}
+      
+      {/* Bot Difficulty Selector Modal - shown globally */}
+      {showBotSelector && (
+        <BotDifficultySelector
+          onSelect={handleBotDifficultySelect}
+          onCancel={() => {
+            setShowBotSelector(false);
+            setMode('local'); // Reset to local if cancelled
+          }}
+        />
+      )}
     </div>
   );
 }
