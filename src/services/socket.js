@@ -2,9 +2,11 @@ import { io } from 'socket.io-client';
 import { getCurrentUsername } from '../components/UserProfile';
 
 // Dynamically set the backend URL based on the environment.
-const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000' 
-  : 'https://chain-reaction-backend-pml1.onrender.com';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:5000'
+    : 'https://chain-reaction-backend-pml1.onrender.com'
+);
 
 // Configure the socket connection with settings optimized for production.
 const socket = io(BACKEND_URL, {
@@ -46,9 +48,9 @@ export const createRoom = () => {
  * @param {string} roomCode - The room where the move is made.
  * @param {object} move - The move object.
  */
-export const makeMove = (roomCode, move) => {
+export const makeMove = (roomCode, move, playerId) => {
   const username = getCurrentUsername();
-  socket.emit('makeMove', { roomCode, move, username });
+  socket.emit('makeMove', { roomCode, move, username, playerId });
 };
 
 export default socket;

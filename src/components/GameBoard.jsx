@@ -639,7 +639,8 @@ const GameBoard = ({
       
       // Use room-based move if roomCode is available, otherwise use old game-based system
       if (roomCode) {
-        socket.emit('makeMove', { roomCode, move: { x, y } });
+        const username = getCurrentUsername();
+        socket.emit('makeMove', { roomCode, playerId, username, move: { x, y } });
       } else {
         socket.emit('makeMove', { gameId, playerId, move: { x, y } });
       }
