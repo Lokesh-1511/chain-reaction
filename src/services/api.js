@@ -1,7 +1,9 @@
-// Use localhost for development, Render for production
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api' 
-  : 'https://chain-reaction-backend-pml1.onrender.com/api';
+// Use env config when available, fallback to localhost/Render
+const API_URL = import.meta.env.VITE_API_URL || (
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : 'https://chain-reaction-backend-pml1.onrender.com/api'
+);
 
 // Helper function to handle API calls with error handling
 async function apiCall(url, options = {}) {

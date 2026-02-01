@@ -5,12 +5,22 @@
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "firebase-admin": "^12.0.0",
+    "helmet": "^7.1.0",
     "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   },
   "scripts": {
     "start": "node server.js",
-    "build": "echo 'No build needed for backend'",
-    "dev": "node server.js"
+    "dev": "nodemon server.js",
+    "build": "echo 'No build needed for backend'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
