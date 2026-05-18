@@ -1,8 +1,6 @@
-const CACHE_NAME = 'chain-reaction-v1';
+const CACHE_NAME = 'chain-reaction-v3';
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
   '/manifest.json',
   '/chain-reaction-icon.svg',
   // Add other static assets
@@ -16,10 +14,20 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+
+  // Activate updated service worker immediately.
+  self.skipWaiting();
 });
 
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -43,4 +51,7 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+
+  // Start controlling open pages right away after activation.
+  self.clients.claim();
 });

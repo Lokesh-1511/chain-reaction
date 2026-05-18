@@ -1,20 +1,13 @@
-// Cell class for backend logic
-class Cell {
-  constructor() {
-    this.value = 0; // Represents the count of orbs in the cell
-    this.player = 0; // 0 for no player, 1 for player 1, 2 for player 2, etc.
-    this.max_value = 0; // The maximum count before explosion
+function getCellMaxValue(i, j, row, col) {
+  if ((i === 0 || i === row - 1) && (j === 0 || j === col - 1)) {
+    return 1; // Corner cells have max 1
   }
 
-  setMaxValue(i, j, row, col) {
-    if ((i === 0 || i === row - 1) && (j === 0 || j === col - 1)) {
-      this.max_value = 1; // Corner cells have max 1
-    } else if (i === 0 || i === row - 1 || j === 0 || j === col - 1) {
-      this.max_value = 2; // Edge cells have max 2
-    } else {
-      this.max_value = 3; // Inner cells have max 3
-    }
+  if (i === 0 || i === row - 1 || j === 0 || j === col - 1) {
+    return 2; // Edge cells have max 2
   }
+
+  return 3; // Inner cells have max 3
 }
 
 function createInitialState(row = 9, col = 6, players = 2) {
@@ -22,9 +15,12 @@ function createInitialState(row = 9, col = 6, players = 2) {
   for (let i = 0; i < row; i++) {
     grid[i] = [];
     for (let j = 0; j < col; j++) {
-      const cell = new Cell();
-      cell.setMaxValue(i, j, row, col);
-      grid[i][j] = cell;
+      // Use plain objects so the state can be persisted to Firestore.
+      grid[i][j] = {
+        value: 0,
+        player: 0,
+        max_value: getCellMaxValue(i, j, row, col)
+      };
     }
   }
   return {

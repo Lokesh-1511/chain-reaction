@@ -35,7 +35,13 @@ app.use('/api/', limiter);
 // Parse allowed origins from environment
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+  : [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'https://chain-reaction-15loki.web.app',
+      'https://chain-reaction-15loki.firebaseapp.com'
+    ];
 
 // Configure CORS for Socket.IO
 const io = new Server(server, {

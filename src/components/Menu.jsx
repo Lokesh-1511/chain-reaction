@@ -210,13 +210,25 @@ function Menu({ onPageChange, isOnline = true }) {
       setError(message);
     });
 
+    socket.on('connect_error', () => {
+      setError('Cannot connect to multiplayer server right now. Please try again.');
+    });
+
+    socket.on('disconnect', () => {
+      if (page === 'game' && mode === 'multi') {
+        setError('Disconnected from multiplayer server. Trying to reconnect...');
+      }
+    });
+
     return () => {
       socket.off('roomCreated');
       socket.off('roomJoined');
       socket.off('playerJoined');
       socket.off('error');
+      socket.off('connect_error');
+      socket.off('disconnect');
     };
-  }, []);
+  }, [mode, page]);
 
   const handleStartGame = async () => {
     setError("");
@@ -243,6 +255,16 @@ function Menu({ onPageChange, isOnline = true }) {
         setShowBotSelector(true);
       } else {
         // For multiplayer, use room-based system
+        if (!socket.connected) {
+          setError('Connecting to multiplayer server...');
+          socket.once('connect', () => {
+            setError('');
+            createRoom();
+          });
+          socket.connect();
+          return;
+        }
+
         createRoom();
       }
     } catch (e) {

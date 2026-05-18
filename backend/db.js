@@ -2,6 +2,41 @@ const admin = require('firebase-admin');
 
 // Initialize Firebase Admin SDK
 let db;
+const memoryStore = {
+  games: new Map(),
+  users: new Map(),
+  sessions: new Map()
+};
+
+function isFirestoreUnavailableError(error) {
+  const message = String(error?.message || error || '');
+  return (
+    message.includes('Unable to detect a Project Id') ||
+    message.includes('Could not load the default credentials') ||
+    message.includes('Could not refresh access token') ||
+    message.includes('Failed to initialize Firebase')
+  );
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function toFirestoreGameDoc(gameData) {
+  return {
+    ...gameData,
+    activePlayers: Array.from(gameData.activePlayers || []),
+    surrenderedPlayers: Array.from(gameData.surrenderedPlayers || [])
+  };
+}
+
+function fromStoredGameDoc(data) {
+  if (!data) return null;
+  const game = clone(data);
+  game.activePlayers = new Set(game.activePlayers || []);
+  game.surrenderedPlayers = new Set(game.surrenderedPlayers || []);
+  return game;
+}
 
 function initializeFirebase() {
   try {
@@ -53,12 +88,9 @@ async function createGame(gameData) {
     const gameRef = db.collection(COLLECTIONS.GAMES).doc(gameData.id);
     
     const gameDoc = {
-      ...gameData,
+      ...toFirestoreGameDoc(gameData),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      // Convert Sets to Arrays for Firestore
-      activePlayers: Array.from(gameData.activePlayers || []),
-      surrenderedPlayers: Array.from(gameData.surrenderedPlayers || [])
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     
     await gameRef.set(gameDoc);
@@ -66,6 +98,17 @@ async function createGame(gameData) {
     
     return gameDoc;
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      const memoryGame = {
+        ...toFirestoreGameDoc(gameData),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      memoryStore.games.set(gameData.id, memoryGame);
+      console.warn(`⚠️ Firestore unavailable, stored game in memory: ${gameData.id}`);
+      return memoryGame;
+    }
+
     console.error('❌ Error creating game:', error);
     throw error;
   }
@@ -84,16 +127,12 @@ async function getGame(gameId) {
     }
     
     const data = doc.data();
-    // Convert arrays back to Sets
-    if (data.activePlayers) {
-      data.activePlayers = new Set(data.activePlayers);
-    }
-    if (data.surrenderedPlayers) {
-      data.surrenderedPlayers = new Set(data.surrenderedPlayers);
-    }
-    
-    return data;
+    return fromStoredGameDoc(data);
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      return fromStoredGameDoc(memoryStore.games.get(gameId));
+    }
+
     console.error(`❌ Error getting game ${gameId}:`, error);
     throw error;
   }
@@ -120,6 +159,28 @@ async function updateGame(gameId, updates) {
     await gameRef.update(updateData);
     console.log(`✅ Game updated in Firestore: ${gameId}`);
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      const existing = memoryStore.games.get(gameId);
+      if (!existing) {
+        throw new Error(`Game not found in memory store: ${gameId}`);
+      }
+
+      const normalizedUpdates = { ...updates };
+      if (normalizedUpdates.activePlayers instanceof Set) {
+        normalizedUpdates.activePlayers = Array.from(normalizedUpdates.activePlayers);
+      }
+      if (normalizedUpdates.surrenderedPlayers instanceof Set) {
+        normalizedUpdates.surrenderedPlayers = Array.from(normalizedUpdates.surrenderedPlayers);
+      }
+
+      memoryStore.games.set(gameId, {
+        ...existing,
+        ...clone(normalizedUpdates),
+        updatedAt: new Date().toISOString()
+      });
+      return;
+    }
+
     console.error(`❌ Error updating game ${gameId}:`, error);
     throw error;
   }
@@ -133,6 +194,11 @@ async function deleteGame(gameId) {
     await db.collection(COLLECTIONS.GAMES).doc(gameId).delete();
     console.log(`✅ Game deleted from Firestore: ${gameId}`);
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      memoryStore.games.delete(gameId);
+      return;
+    }
+
     console.error(`❌ Error deleting game ${gameId}:`, error);
     throw error;
   }
@@ -147,17 +213,14 @@ async function getActiveGames() {
       .where('status', 'in', ['waiting', 'active'])
       .get();
     
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      if (data.activePlayers) {
-        data.activePlayers = new Set(data.activePlayers);
-      }
-      if (data.surrenderedPlayers) {
-        data.surrenderedPlayers = new Set(data.surrenderedPlayers);
-      }
-      return data;
-    });
+    return snapshot.docs.map(doc => fromStoredGameDoc(doc.data()));
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      return Array.from(memoryStore.games.values())
+        .filter(game => ['waiting', 'active'].includes(game.status))
+        .map(fromStoredGameDoc);
+    }
+
     console.error('❌ Error getting active games:', error);
     throw error;
   }
@@ -184,6 +247,21 @@ async function cleanupOldGames() {
     
     return snapshot.size;
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      let deletedCount = 0;
+
+      for (const [gameId, game] of memoryStore.games.entries()) {
+        const createdAtMs = Date.parse(game.createdAt || 0);
+        if (Number.isFinite(createdAtMs) && createdAtMs < oneDayAgo) {
+          memoryStore.games.delete(gameId);
+          deletedCount += 1;
+        }
+      }
+
+      return deletedCount;
+    }
+
     console.error('❌ Error cleaning up old games:', error);
     throw error;
   }
@@ -223,6 +301,30 @@ async function createOrUpdateUser(userId, userData) {
       return newUser;
     }
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      const existing = memoryStore.users.get(userId);
+      if (existing) {
+        const updated = {
+          ...existing,
+          ...clone(userData),
+          updatedAt: new Date().toISOString()
+        };
+        memoryStore.users.set(userId, updated);
+        return updated;
+      }
+
+      const created = {
+        ...clone(userData),
+        id: userId,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      memoryStore.users.set(userId, created);
+      return created;
+    }
+
     console.error(`❌ Error creating/updating user ${userId}:`, error);
     throw error;
   }
@@ -242,6 +344,10 @@ async function getUser(userId) {
     
     return doc.data();
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      return clone(memoryStore.users.get(userId) || null);
+    }
+
     console.error(`❌ Error getting user ${userId}:`, error);
     throw error;
   }
@@ -263,6 +369,22 @@ async function updateUserStats(userId, won) {
     const updatedDoc = await userRef.get();
     return updatedDoc.data();
   } catch (error) {
+    if (isFirestoreUnavailableError(error)) {
+      const existing = memoryStore.users.get(userId);
+      if (!existing) {
+        throw new Error(`User not found in memory store: ${userId}`);
+      }
+
+      const updated = {
+        ...existing,
+        gamesPlayed: (existing.gamesPlayed || 0) + 1,
+        gamesWon: (existing.gamesWon || 0) + (won ? 1 : 0),
+        updatedAt: new Date().toISOString()
+      };
+      memoryStore.users.set(userId, updated);
+      return clone(updated);
+    }
+
     console.error(`❌ Error updating user stats for ${userId}:`, error);
     throw error;
   }
@@ -374,7 +496,17 @@ async function getDatabaseStats() {
     };
   } catch (error) {
     console.error('❌ Error getting database stats:', error);
-    // Return safe defaults if Firestore is unavailable
+    // Return memory-backed stats if Firestore is unavailable.
+    if (isFirestoreUnavailableError(error)) {
+      return {
+        totalGames: memoryStore.games.size,
+        totalUsers: memoryStore.users.size,
+        totalSessions: memoryStore.sessions.size,
+        storage: 'memory-fallback'
+      };
+    }
+
+    // Return safe defaults if Firestore is unavailable for any other reason.
     return {
       totalGames: 0,
       totalUsers: 0,

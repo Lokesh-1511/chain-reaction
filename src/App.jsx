@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Menu from './components/Menu'; 
 import UserProfile from './components/UserProfile';
@@ -9,7 +9,6 @@ import { offlineDetector, showOfflineNotification, showOnlineNotification } from
 function GameStateManager() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentPage, setCurrentPage] = useState("menu");
   const [isOnline, setIsOnline] = useState(offlineDetector.isOnline);
   const hasNavigated = useRef(false);
   
@@ -50,14 +49,14 @@ function GameStateManager() {
   }, [navigate]); // Remove location.pathname from dependencies
 
   // Handle page changes and update URL
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    if (page === 'game') {
-      navigate('/game');
-    } else {
-      navigate('/');
+  const handlePageChange = useCallback((page) => {
+    const targetPath = page === 'game' ? '/game' : '/';
+
+    // Avoid spamming History API when already on the requested route.
+    if (location.pathname !== targetPath) {
+      navigate(targetPath, { replace: true });
     }
-  };
+  }, [location.pathname, navigate]);
 
   return (
     <div className="App">
@@ -100,6 +99,10 @@ function GameStateManager() {
 }
 
 function App() {
+  useEffect(() => {
+    document.title = 'Chain Reaction';
+  }, []);
+
   return (
     <Router>
       <GameStateManager />

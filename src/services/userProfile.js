@@ -1,6 +1,8 @@
-const API_URL = process.env.NODE_ENV === 'production'
-  ? 'https://chain-reaction-backend-pml1.onrender.com/api'
-  : 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || (
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : 'https://chain-reaction-backend-pml1.onrender.com/api'
+);
 
 /**
  * Creates or retrieves a user profile.
